@@ -1,5 +1,19 @@
 # How-to
 
-- Lint: `npm run lint`
-- Run dev: `npm run dev`
-- Test: TODO
+- Lint:
+
+    ```zsh
+    npm run lint
+    ```
+
+- Run dev:
+
+    ```zsh
+    npm run dev
+    ```
+
+- Test:
+
+    ```zsh
+    npm run test
+    ```
