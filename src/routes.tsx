@@ -24,7 +24,7 @@ export const router = createBrowserRouter([
             },
             {
                 path: getThingyUrl(':id'),
-                loader: async ({ params }): Promise<Parameterized.Props> => ({ id: params.id! }),
+                loader: ({ params }): Parameterized.Props => ({ id: params.id! }), // eslint-disable-line @typescript-eslint/no-non-null-assertion
                 element: <WrapElement element={(props: Parameterized.Props) => <Parameterized.Page {...props} />} />,
             },
         ],
