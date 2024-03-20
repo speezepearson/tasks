@@ -3,7 +3,7 @@ import { Link, Outlet } from "react-router-dom";
 export function Root() {
     return <>
         <header>
-            {/* header stuff */}
+            <Link to="/">Home</Link>
         </header>
         <main>
             <Outlet />
