@@ -10,6 +10,8 @@
 
     ```zsh
     npm run dev
+    # and in another window,
+    npx convex dev
     ```
 
 - Test:
