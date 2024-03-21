@@ -14,7 +14,11 @@ function CreateTaskForm() {
         e.preventDefault();
         if (working) return;
         setWorking(true);
-        createTask({ text }).catch(console.error).finally(() => { setWorking(false); setText(""); });
+        (async () => {
+            await createTask({ text });
+            setWorking(false)
+            setText("");
+        })().catch(console.error);
     }}>
         <input disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
         <button disabled={working} type="submit">Create</button>
