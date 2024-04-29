@@ -247,6 +247,12 @@ export function Page() {
     const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
     const now = useNow(10000);
+    const outstandingBlockers = useMemo(() => {
+        return tasks && blockers && tasksById && miscBlockersById && Map(tasks.map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })]));
+    }, [tasks, blockers, now])
+
+    const [showCompleted, setShowCompleted] = useState(false);
+    const [showBlocked, setShowBlocked] = useState(false);
 
     if (projects === undefined
         || tasks === undefined
@@ -255,6 +261,7 @@ export function Page() {
         || tasksByProject === undefined
         || tasksById === undefined
         || miscBlockersById === undefined
+        || outstandingBlockers === undefined
     ) {
         return <div>Loading...</div>
     }
@@ -273,6 +280,16 @@ export function Page() {
     }
 
     return <div>
+        <div>
+            <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
+            {" "}
+            <label htmlFor="showCompleted">Show completed</label>
+        </div>
+        <div>
+            <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => setShowBlocked(e.target.checked)} />
+            {" "}
+            <label htmlFor="showBlocked">Show blocked</label>
+        </div>
         <h1>Projects</h1>
         {tasksByProject.entrySeq()
             .sortBy(([p,]) => [p === undefined, p])
@@ -285,7 +302,9 @@ export function Page() {
                 </h3>
                 <ul>
                     {projectTasks
-                        .sortBy(t => [t.completedAtMillis !== undefined, getOutstandingBlockers({ task: t, tasksById, miscBlockersById, now }).size > 0, t.text])
+                        .filter(t => showCompleted || t.completedAtMillis === undefined)
+                        .filter(t => showBlocked || (outstandingBlockers.get(t._id)?.size ?? 0) === 0)
+                        .sortBy(t => [t.completedAtMillis !== undefined, outstandingBlockers.get(t._id)?.isEmpty(), t.text])
                         .map((task) => <li key={task._id}>
                             <Task
                                 task={task}
