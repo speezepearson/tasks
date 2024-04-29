@@ -60,9 +60,9 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
     }, [miscBlockers, field]);
     const matches = useMemo(() => {
         return List([
-            ...matchingTasks.map(t => ({ type: 'task', item: t })),
-            ...matchingMiscBlockers.map(b => ({ type: 'misc', item: b })),
-        ] as ({ type: 'task', item: Doc<'tasks'> } | { type: 'misc', item: Doc<'miscBlockers'> })[]);
+            ...matchingTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ type: 'task', id: t._id }) })),
+            ...matchingMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ type: 'misc', id: b._id }) })),
+        ]);
     }, [matchingTasks, matchingMiscBlockers]);
 
     const submit = async (selectedIndex: number | null) => {
@@ -73,14 +73,7 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
             await linkBlocker({ type: 'misc', id });
         } else {
             const match = matches.get(selectedIndex)!;
-            switch (match.type) {
-                case "misc":
-                    await linkBlocker({ type: 'misc', id: match.item._id });
-                    break;
-                case "task":
-                    await linkBlocker({ type: 'task', id: match.item._id });
-                    break;
-            }
+            await match.link();
         }
         setField(null);
         setSelectedIndex(null);
@@ -100,12 +93,12 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
                 borderRadius: '4px',
                 boxShadow: '0 1px 5px rgba(0,0,0,.2)',
             }}>
-                {matches.map((m, i) => <div key={m.item._id} className={i === selectedIndex ? 'bg-primary text-white' : ''}
+                {matches.map((m, i) => <div key={m.id} className={i === selectedIndex ? 'bg-primary text-white' : ''}
                     onMouseEnter={() => setSelectedIndex(i)}
                     onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
                     onClick={() => submit(i)}
                 >
-                    {m.item.text}
+                    {m.text}
                 </div>)}
             </div>
             <input
