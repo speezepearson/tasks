@@ -46,11 +46,12 @@ function textMatches(text: string, query: string): boolean {
     return true;
 }
 
-function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
-    linkBlocker: (id: typeof api.tasks.linkBlocker._args.blocker) => Promise<unknown>,
-    tasks: List<Doc<'tasks'>>,
-    miscBlockers: List<Doc<'miscBlockers'>>,
+function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
+    task: Doc<'tasks'>,
+    allTasks: List<Doc<'tasks'>>,
+    allMiscBlockers: List<Doc<'miscBlockers'>>,
 }) {
+    const linkBlocker = useMutation(api.tasks.linkBlocker);
     const createMiscBlocker = useMutation(api.miscBlockers.create);
     const [field, setField] = useState<null | string>(null);
     const [working, setWorking] = useState(false);
@@ -58,17 +59,18 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
     const inputRef = useRef<HTMLInputElement>(null);
     const completionsRef = useRef<HTMLDivElement>(null);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+    const [focused, setFocused] = useState(false);
 
     const matchingTasks = useMemo(() => {
-        return field && field.length > 1 ? tasks.filter((task) => textMatches(task.text, field)) : tasks.take(0);
-    }, [tasks, field]);
+        return field && field.length > 1 ? allTasks.filter((task) => textMatches(task.text, field)) : allTasks.take(0);
+    }, [allTasks, field]);
     const matchingMiscBlockers = useMemo(() => {
-        return field && field.length > 1 ? miscBlockers.filter((blocker) => textMatches(blocker.text, field)) : miscBlockers.take(0);
-    }, [miscBlockers, field]);
+        return field && field.length > 1 ? allMiscBlockers.filter((blocker) => textMatches(blocker.text, field)) : allMiscBlockers.take(0);
+    }, [allMiscBlockers, field]);
     const matches = useMemo(() => {
         return List([
-            ...matchingTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ type: 'task', id: t._id }) })),
-            ...matchingMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ type: 'misc', id: b._id }) })),
+            ...matchingTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
+            ...matchingMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'misc', id: b._id } }) })),
         ]);
     }, [matchingTasks, matchingMiscBlockers]);
 
@@ -77,14 +79,19 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
         if (working) return;
         if (selectedIndex === null) {
             const id = await createMiscBlocker({ text: field })
-            await linkBlocker({ type: 'misc', id });
+            await linkBlocker({ id: task._id, blocker: { type: 'misc', id } });
         } else {
             const match = matches.get(selectedIndex)!;
             await match.link();
         }
         setField(null);
         setSelectedIndex(null);
-
+    }
+    const goDown = () => {
+        setSelectedIndex(selectedIndex === null ? 0 : selectedIndex >= matches.size - 1 ? null : selectedIndex + 1);
+    }
+    const goUp = () => {
+        setSelectedIndex(selectedIndex === null ? matches.size - 1 : selectedIndex <= 0 ? null : selectedIndex - 1);
     }
 
     return field === null
@@ -99,19 +106,23 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
                 background: 'white',
                 borderRadius: '4px',
                 boxShadow: '0 1px 5px rgba(0,0,0,.2)',
+                visibility: focused && !matches.isEmpty() ? 'visible' : 'hidden',
             }}>
-                {matches.map((m, i) => <div key={m.id} className={i === selectedIndex ? 'bg-primary text-white' : ''}
-                    onMouseEnter={() => setSelectedIndex(i)}
-                    onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
-                    onClick={() => submit(i)}
-                >
-                    {m.text}
-                </div>)}
+                <ul className="list-group">
+                    {matches.map((m, i) => <li key={m.id} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
+                        onMouseEnter={() => setSelectedIndex(i)}
+                        onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
+                        onClick={() => submit(i)}
+                    >
+                        {m.text}
+                    </li>)}
+                </ul>
             </div>
             <input
                 ref={inputRef}
                 autoFocus
                 type="text"
+                placeholder="blocker"
                 disabled={working}
                 value={field}
                 onChange={(e) => {
@@ -121,16 +132,26 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
                         completionsRef.current.style.left = `${inputRef.current!.offsetLeft}px`;
                     }
                 }}
+                onFocus={() => { setFocused(true) }}
+                onBlur={() => { setFocused(false) }}
                 onKeyDown={(e) => {
                     if (working) return;
                     switch (e.key) {
                         case 'ArrowDown':
                             e.preventDefault();
-                            setSelectedIndex(selectedIndex === null ? 0 : selectedIndex >= matches.size - 1 ? null : selectedIndex + 1);
+                            goDown();
                             break;
                         case 'ArrowUp':
                             e.preventDefault();
-                            setSelectedIndex(selectedIndex === null ? matches.size - 1 : selectedIndex <= 0 ? null : selectedIndex - 1);
+                            goUp();
+                            break;
+                        case 'Tab':
+                            e.preventDefault();
+                            if (e.shiftKey) {
+                                goUp();
+                            } else {
+                                goDown();
+                            }
                             break;
 
                         case "Enter":
@@ -165,50 +186,50 @@ function getOutstandingBlockers({ task, tasksById, miscBlockersById, now }: {
     }));
 }
 
-function Task({ task, tasksById, miscBlockersById, setCompleted, setMiscBlockerCompleted, linkBlocker, unlinkBlocker }: {
+function Task({ task, tasksById, miscBlockersById }: {
     task: Doc<'tasks'>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
     miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
-    setCompleted: (isCompleted: boolean) => Promise<unknown>,
-    setMiscBlockerCompleted: (id: Id<'miscBlockers'>, isCompleted: boolean) => Promise<unknown>,
-    linkBlocker: (id: typeof api.tasks.linkBlocker._args.blocker) => Promise<unknown>,
-    unlinkBlocker: (blocker: Doc<'tasks'>['blockers'][0]) => Promise<unknown>,
 }) {
+    const unlinkBlocker = useMutation(api.tasks.unlinkBlocker);
+    const setCompleted = useMutation(api.tasks.setCompleted);
+    const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
+
     const now = useNow(10000);
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
     return <div>
-        <input type="checkbox" id={`task-${task._id}`} checked={task.completedAtMillis !== undefined} onChange={(e) => setCompleted(e.target.checked)} disabled={blocked && task.completedAtMillis === undefined} />
+        <input type="checkbox" id={`task-${task._id}`} checked={task.completedAtMillis !== undefined} onChange={(e) => setCompleted({ id: task._id, isCompleted: e.target.checked })} disabled={blocked && task.completedAtMillis === undefined} />
         {" "}
         <label htmlFor={`task-${task._id}`} className={blocked ? "text-muted" : ""}>{task.text}</label>
         {" "}
-        <AddBlockerForm tasks={List(tasksById.values())} miscBlockers={List(miscBlockersById.values())} linkBlocker={linkBlocker} />
+        <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
         {blocked
-            && <div>
+            && <div className="ms-4">
                 blocked on:
-                <ul>
+                <ul className="list-group">
                     {outstandingBlockers.map((blocker) => {
-                        const unlinkButton = <button className="btn btn-sm btn-outline-secondary" onClick={() => unlinkBlocker(blocker)}>-</button>;
+                        const unlinkButton = <button className="btn btn-sm btn-outline-secondary" onClick={() => unlinkBlocker({ id: task._id, blocker })}>-</button>;
                         switch (blocker.type) {
                             case "task":
-                                return <li key={blocker.id}>
+                                return <li key={blocker.id} className="list-group-item">
                                     {tasksById.get(blocker.id)!.text}
-                                    {unlinkButton}
+                                    {" "} {unlinkButton}
                                 </li>
                             case "time":
-                                return <li key="__time">
+                                return <li key="__time" className="list-group-item">
                                     {moment(blocker.millis).fromNow()}
-                                    {unlinkButton}
+                                    {" "} {unlinkButton}
                                 </li>
                             case "misc":
-                                return <li key={blocker.id}>
-                                    <input type="checkbox" id={`task-${task._id}--miscBlocker-${blocker.id}`} checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined} onChange={(e) => setMiscBlockerCompleted(blocker.id, e.target.checked)} />
+                                return <li key={blocker.id} className="list-group-item">
+                                    <input type="checkbox" id={`task-${task._id}--miscBlocker-${blocker.id}`} checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined} onChange={(e) => setMiscBlockerCompleted({ id: blocker.id, isCompleted: e.target.checked })} />
                                     {" "}
                                     <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
                                         {miscBlockersById.get(blocker.id)!.text}
                                     </label>
-                                    {unlinkButton}
+                                    {" "} {unlinkButton}
                                 </li>
                         }
                     })}
@@ -229,16 +250,86 @@ function byUniqueKey<T, K>(items: List<T>, key: (item: T) => K): Map<K, T> {
     return map;
 }
 
+function ProjectCard({
+    project,
+    projectTasks,
+    tasksById,
+    miscBlockersById,
+    showCompleted,
+    showBlocked,
+}: {
+    project: Doc<'projects'> | undefined,
+    projectTasks: List<Doc<'tasks'>>,
+    tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
+    miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
+    showCompleted: boolean,
+    showBlocked: boolean,
+}) {
+
+    const now = useNow(10000);
+    const outstandingBlockers = useMemo(() => {
+        return projectTasks && tasksById && miscBlockersById && Map(projectTasks.map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })]));
+    }, [projectTasks, tasksById, miscBlockersById, now]);
+
+    const [showTasks, tasksHiddenBecauseCompleted, tasksHiddenBecauseBlocked] = useMemo(() => {
+        let tasksHiddenBecauseCompleted = List<Doc<'tasks'>>();
+        let tasksHiddenBecauseBlocked = List<Doc<'tasks'>>();
+        let showTasks = List<Doc<'tasks'>>();
+        for (const task of projectTasks) {
+            if (!showCompleted && task.completedAtMillis !== undefined) {
+                tasksHiddenBecauseCompleted = tasksHiddenBecauseCompleted.push(task);
+            } else if (!showBlocked && !outstandingBlockers.get(task._id, List()).isEmpty()) {
+                tasksHiddenBecauseBlocked = tasksHiddenBecauseBlocked.push(task);
+            } else {
+                showTasks = showTasks.push(task);
+            }
+        }
+        return [showTasks, tasksHiddenBecauseCompleted, tasksHiddenBecauseBlocked];
+    }, [projectTasks, showCompleted, showBlocked, outstandingBlockers]);
+    return <div key={project?._id ?? "<undef>"} className="mt-4 p-2 border-start border-3">
+        <h3>
+            {project === undefined
+                ? "(misc)"
+                : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState}>{project.name}</Link>
+            }
+        </h3>
+        <ul className="list-group">
+            {showTasks
+                .map((task) => <li key={task._id} className="list-group-item">
+                    <Task
+                        task={task}
+                        tasksById={tasksById}
+                        miscBlockersById={miscBlockersById}
+                    />
+                </li>)}
+            {(!tasksHiddenBecauseCompleted.isEmpty() || !tasksHiddenBecauseBlocked.isEmpty()) && <li className="list-group-item text-muted">
+                <details>
+                    <summary>
+                        {!tasksHiddenBecauseCompleted.isEmpty() && <span className="me-2">+{tasksHiddenBecauseCompleted.size} completed</span>}
+                        {!tasksHiddenBecauseBlocked.isEmpty() && <span className="me-2">+{tasksHiddenBecauseBlocked.size} blocked</span>}
+                    </summary>
+
+                    <ul className="list-group">
+                        {tasksHiddenBecauseCompleted.concat(tasksHiddenBecauseBlocked).map((task) => <li key={task._id} className="list-group-item">
+                            <Task
+                                task={task}
+                                tasksById={tasksById}
+                                miscBlockersById={miscBlockersById}
+                            />
+                        </li>)}
+                    </ul>
+                </details>
+            </li>}
+            <li className="list-group-item"><CreateTaskForm project={project} /></li>
+        </ul>
+    </div>
+
+}
+
 export function Page() {
     const projects = mapundef(useQuery(api.projects.list), List);
     const tasks = mapundef(useQuery(api.tasks.list), List);
     const blockers = mapundef(useQuery(api.miscBlockers.list), List);
-    const createProject = useMutation(api.projects.create);
-    const createTask = useMutation(api.tasks.create);
-    const createBlocker = useMutation(api.miscBlockers.create);
-    const linkBlocker = useMutation(api.tasks.linkBlocker);
-    const unlinkBlocker = useMutation(api.tasks.unlinkBlocker);
-    const setTaskCompleted = useMutation(api.tasks.setCompleted);
     const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
@@ -247,9 +338,6 @@ export function Page() {
     const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
     const now = useNow(10000);
-    const outstandingBlockers = useMemo(() => {
-        return tasks && blockers && tasksById && miscBlockersById && Map(tasks.map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })]));
-    }, [tasks, blockers, now])
 
     const [showCompleted, setShowCompleted] = useState(false);
     const [showBlocked, setShowBlocked] = useState(false);
@@ -261,7 +349,6 @@ export function Page() {
         || tasksByProject === undefined
         || tasksById === undefined
         || miscBlockersById === undefined
-        || outstandingBlockers === undefined
     ) {
         return <div>Loading...</div>
     }
@@ -280,55 +367,39 @@ export function Page() {
     }
 
     return <div>
-        <div>
-            <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
-            {" "}
-            <label htmlFor="showCompleted">Show completed</label>
-        </div>
-        <div>
-            <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => setShowBlocked(e.target.checked)} />
-            {" "}
-            <label htmlFor="showBlocked">Show blocked</label>
+        <div className="d-flex flex-row">
+            <div className="me-4">
+                <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
+                {" "}
+                <label htmlFor="showCompleted">Show completed</label>
+            </div>
+            <div className="me-4">
+                <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => setShowBlocked(e.target.checked)} />
+                {" "}
+                <label htmlFor="showBlocked">Show blocked</label>
+            </div>
         </div>
         <h1>Projects</h1>
         {tasksByProject.entrySeq()
             .sortBy(([p,]) => [p === undefined, p])
-            .map(([project, projectTasks]) => <div key={project?._id ?? "<undef>"} className="card p-2">
-                <h3>
-                    {project === undefined
-                        ? "(misc)"
-                        : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState}>{project.name}</Link>
-                    }
-                </h3>
-                <ul>
-                    {projectTasks
-                        .filter(t => showCompleted || t.completedAtMillis === undefined)
-                        .filter(t => showBlocked || (outstandingBlockers.get(t._id)?.size ?? 0) === 0)
-                        .sortBy(t => [t.completedAtMillis !== undefined, outstandingBlockers.get(t._id)?.isEmpty(), t.text])
-                        .map((task) => <li key={task._id}>
-                            <Task
-                                task={task}
-                                tasksById={tasksById}
-                                miscBlockersById={miscBlockersById}
-                                setCompleted={(isCompleted) => setTaskCompleted({ id: task._id, isCompleted })}
-                                setMiscBlockerCompleted={(id, isCompleted) => setMiscBlockerCompleted({ id, isCompleted })}
-                                linkBlocker={async (blocker) => {
-                                    await linkBlocker({ id: task._id, blocker });
-                                }}
-                                unlinkBlocker={async (blocker) => {
-                                    await unlinkBlocker({ id: task._id, blocker });
-                                }}
-                            />
-                        </li>)}
-                    <li><CreateTaskForm project={project} /></li>
-                </ul>
-            </div>)}
+            .map(([project, projectTasks]) => (
+                <ProjectCard
+                    key={project?._id ?? "<undef>"}
+                    project={project}
+                    projectTasks={projectTasks}
+                    tasksById={tasksById}
+                    miscBlockersById={miscBlockersById}
+                    showCompleted={showCompleted}
+                    showBlocked={showBlocked}
+                />
+            ))}
 
         <h1 className="mt-4"> All misc blockers </h1>
-        <ul>
+        <ul className="list-group">
             {blockers
+                .filter(b => showCompleted || b.completedAtMillis === undefined)
                 .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
-                .map((blocker) => <li key={blocker._id}>{showMiscBlocker(blocker)}</li>)}
+                .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
         </ul>
     </div>
 }
