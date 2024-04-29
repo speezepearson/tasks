@@ -5,7 +5,7 @@ export function Root() {
         <header>
             <Link to="/">Home</Link>
         </header>
-        <main>
+        <main className="container">
             <Outlet />
         </main>
         <footer>
