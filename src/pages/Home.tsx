@@ -34,8 +34,8 @@ function useNow(intervalMillis: number) {
         const interval = setInterval(() => {
             setNow(new Date());
         }, intervalMillis);
-        return () => clearInterval(interval);
-    }, []);
+        return () => { clearInterval(interval) };
+    }, [intervalMillis]);
     return now;
 }
 
@@ -72,7 +72,7 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
             ...matchingTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
             ...matchingMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'misc', id: b._id } }) })),
         ]);
-    }, [matchingTasks, matchingMiscBlockers]);
+    }, [matchingTasks, matchingMiscBlockers, task, linkBlocker]);
 
     const submit = async (selectedIndex: number | null) => {
         if (field === null) return;
@@ -81,8 +81,12 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
             const id = await createMiscBlocker({ text: field })
             await linkBlocker({ id: task._id, blocker: { type: 'misc', id } });
         } else {
-            const match = matches.get(selectedIndex)!;
-            await match.link();
+            const match = matches.get(selectedIndex);
+            if (match !== undefined) {
+                await match.link();
+            } else {
+                console.error("No match found for selected index", selectedIndex);
+            }
         }
         setField(null);
         setSelectedIndex(null);
@@ -95,7 +99,7 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
     }
 
     return field === null
-        ? <button className="btn btn-sm btn-outline-secondary" onClick={() => setField("")}>+blocker</button>
+        ? <button className="btn btn-sm btn-outline-secondary" onClick={() => { setField("") }}>+blocker</button>
         : <div className="d-inline-block">
             <div ref={completionsRef} style={{
                 top: '-9999px',
@@ -110,9 +114,9 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
             }}>
                 <ul className="list-group">
                     {matches.map((m, i) => <li key={m.id} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
-                        onMouseEnter={() => setSelectedIndex(i)}
+                        onMouseEnter={() => { setSelectedIndex(i) }}
                         onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
-                        onClick={() => submit(i)}
+                        onClick={() => { submit(i).catch(console.error) }}
                     >
                         {m.text}
                     </li>)}
@@ -129,7 +133,7 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
                     setField(e.target.value);
                     if (completionsRef.current && inputRef.current) {
                         completionsRef.current.style.top = `${inputRef.current.offsetTop + inputRef.current.offsetHeight}px`;
-                        completionsRef.current.style.left = `${inputRef.current!.offsetLeft}px`;
+                        completionsRef.current.style.left = `${inputRef.current.offsetLeft}px`;
                     }
                 }}
                 onFocus={() => { setFocused(true) }}
@@ -162,7 +166,7 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
                             setField(null);
                             break;
 
-                    };
+                    }
                 }}
             />
         </div>
@@ -200,9 +204,16 @@ function Task({ task, tasksById, miscBlockersById }: {
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
     return <div>
-        <input type="checkbox" id={`task-${task._id}`} checked={task.completedAtMillis !== undefined} onChange={(e) => setCompleted({ id: task._id, isCompleted: e.target.checked })} disabled={blocked && task.completedAtMillis === undefined} />
+        <input
+            type="checkbox"
+            id={`task-${task._id}`}
+            checked={task.completedAtMillis !== undefined}
+            onChange={(e) => { setCompleted({ id: task._id, isCompleted: e.target.checked }).catch(console.error) }}
+            disabled={blocked && task.completedAtMillis === undefined} />
         {" "}
-        <label htmlFor={`task-${task._id}`} className={blocked ? "text-muted" : ""}>{task.text}</label>
+        <label htmlFor={`task-${task._id}`} className={blocked ? "text-muted" : ""}>
+            {task.text}
+        </label>
         {" "}
         <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
         {blocked
@@ -210,7 +221,9 @@ function Task({ task, tasksById, miscBlockersById }: {
                 blocked on:
                 <ul className="list-group">
                     {outstandingBlockers.map((blocker) => {
-                        const unlinkButton = <button className="btn btn-sm btn-outline-secondary" onClick={() => unlinkBlocker({ id: task._id, blocker })}>-</button>;
+                        const unlinkButton = <button
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => { unlinkBlocker({ id: task._id, blocker }).catch(console.error) }}>-</button>;
                         switch (blocker.type) {
                             case "task":
                                 return <li key={blocker.id} className="list-group-item">
@@ -224,7 +237,12 @@ function Task({ task, tasksById, miscBlockersById }: {
                                 </li>
                             case "misc":
                                 return <li key={blocker.id} className="list-group-item">
-                                    <input type="checkbox" id={`task-${task._id}--miscBlocker-${blocker.id}`} checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined} onChange={(e) => setMiscBlockerCompleted({ id: blocker.id, isCompleted: e.target.checked })} />
+                                    <input
+                                        type="checkbox"
+                                        id={`task-${task._id}--miscBlocker-${blocker.id}`}
+                                        checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined}
+                                        onChange={(e) => { setMiscBlockerCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error) }}
+                                    />
                                     {" "}
                                     <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
                                         {miscBlockersById.get(blocker.id)!.text}
@@ -268,7 +286,7 @@ function ProjectCard({
 
     const now = useNow(10000);
     const outstandingBlockers = useMemo(() => {
-        return projectTasks && tasksById && miscBlockersById && Map(projectTasks.map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })]));
+        return Map(projectTasks.map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })]));
     }, [projectTasks, tasksById, miscBlockersById, now]);
 
     const [showTasks, tasksHiddenBecauseCompleted, tasksHiddenBecauseBlocked] = useMemo(() => {
@@ -333,7 +351,7 @@ export function Page() {
     const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
-    const tasksByProject = useMemo(() => projectsById && tasks && tasks.groupBy(t => t.project && projectsById.get(t.project)), [tasks]);
+    const tasksByProject = useMemo(() => projectsById && tasks?.groupBy(t => t.project && projectsById.get(t.project)), [tasks, projectsById]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
     const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
@@ -355,9 +373,15 @@ export function Page() {
 
     const showMiscBlocker = (blocker: Doc<'miscBlockers'>) => {
         return <div>
-            <input type="checkbox" id={`miscBlocker-${blocker._id}`} checked={blocker.completedAtMillis !== undefined} onChange={(e) => setMiscBlockerCompleted({ id: blocker._id, isCompleted: e.target.checked })} />
+            <input
+                type="checkbox"
+                id={`miscBlocker-${blocker._id}`}
+                checked={blocker.completedAtMillis !== undefined}
+                onChange={(e) => { setMiscBlockerCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
+            />
             {" "}
-            {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() && <span className="text-danger">TIMED OUT: </span>}
+            {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
+                <span className="text-danger">TIMED OUT: </span>}
             <label htmlFor={`miscBlocker-${blocker._id}`}>
                 {blocker.text}
                 {" "}
@@ -369,12 +393,12 @@ export function Page() {
     return <div>
         <div className="d-flex flex-row">
             <div className="me-4">
-                <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
+                <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
                 {" "}
                 <label htmlFor="showCompleted">Show completed</label>
             </div>
             <div className="me-4">
-                <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => setShowBlocked(e.target.checked)} />
+                <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => { setShowBlocked(e.target.checked) }} />
                 {" "}
                 <label htmlFor="showBlocked">Show blocked</label>
             </div>
