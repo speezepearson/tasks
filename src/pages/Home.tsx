@@ -203,9 +203,11 @@ function Task({ task, tasksById, miscBlockersById, setCompleted, setMiscBlockerC
                                 </li>
                             case "misc":
                                 return <li key={blocker.id}>
-                                    <input type="checkbox" id={`miscBlocker-${blocker.id}`} checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined} onChange={(e) => setMiscBlockerCompleted(blocker.id, e.target.checked)} />
+                                    <input type="checkbox" id={`task-${task._id}--miscBlocker-${blocker.id}`} checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined} onChange={(e) => setMiscBlockerCompleted(blocker.id, e.target.checked)} />
                                     {" "}
-                                    {miscBlockersById.get(blocker.id)!.text}
+                                    <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
+                                        {miscBlockersById.get(blocker.id)!.text}
+                                    </label>
                                     {unlinkButton}
                                 </li>
                         }
@@ -216,10 +218,21 @@ function Task({ task, tasksById, miscBlockersById, setCompleted, setMiscBlockerC
     </div>
 }
 
+function mapundef<T, U>(x: T | undefined, f: (x: T) => U): U | undefined {
+    return x === undefined ? undefined : f(x);
+}
+function byUniqueKey<T, K>(items: List<T>, key: (item: T) => K): Map<K, T> {
+    let map = Map<K, T>();
+    items.forEach((item) => {
+        map = map.set(key(item), item);
+    });
+    return map;
+}
+
 export function Page() {
-    const projects = useQuery(api.projects.list);
-    const tasks = useQuery(api.tasks.list);
-    const blockers = useQuery(api.miscBlockers.list);
+    const projects = mapundef(useQuery(api.projects.list), List);
+    const tasks = mapundef(useQuery(api.tasks.list), List);
+    const blockers = mapundef(useQuery(api.miscBlockers.list), List);
     const createProject = useMutation(api.projects.create);
     const createTask = useMutation(api.tasks.create);
     const createBlocker = useMutation(api.miscBlockers.create);
@@ -228,31 +241,21 @@ export function Page() {
     const setTaskCompleted = useMutation(api.tasks.setCompleted);
     const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
-    const tasksByProject = useMemo(() => {
-        let tasksByProject: Map<string | undefined, List<Doc<'tasks'>>> = Map();
-        tasks?.forEach((task) => {
-            tasksByProject = tasksByProject.update(task.project, List(), (tasks) => tasks.push(task));
-        });
-        return tasksByProject;
-    }, [tasks]);
-    const tasksById = useMemo(() => {
-        let tasksById: Map<Id<'tasks'>, Doc<'tasks'>> = Map();
-        tasks?.forEach((task) => {
-            tasksById = tasksById.set(task._id, task);
-        });
-        return tasksById;
-    }, [tasks]);
-    const miscBlockersById = useMemo(() => {
-        let blockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>> = Map();
-        blockers?.forEach((blocker) => {
-            blockersById = blockersById.set(blocker._id, blocker);
-        });
-        return blockersById;
-    }, [blockers]);
+    const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
+    const tasksByProject = useMemo(() => projectsById && tasks && tasks.groupBy(t => t.project && projectsById.get(t.project)), [tasks]);
+    const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
+    const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
     const now = useNow(10000);
 
-    if (projects === undefined || tasks === undefined || blockers === undefined) {
+    if (projects === undefined
+        || tasks === undefined
+        || blockers === undefined
+        || projectsById === undefined
+        || tasksByProject === undefined
+        || tasksById === undefined
+        || miscBlockersById === undefined
+    ) {
         return <div>Loading...</div>
     }
 
@@ -271,33 +274,40 @@ export function Page() {
 
     return <div>
         <h1>Projects</h1>
-        {projects.map((project) => <div key={project._id} className="card p-2">
-            <h3><Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState}>{project.name}</Link></h3>
-            <ul>
-                {tasksByProject.get(project._id)!
-                    .sortBy(t => [t.completedAtMillis !== undefined, getOutstandingBlockers({ task: t, tasksById, miscBlockersById, now }).size > 0, t.text])
-                    .map((task) => <li key={task._id}>
-                        <Task
-                            task={task}
-                            tasksById={tasksById}
-                            miscBlockersById={miscBlockersById}
-                            setCompleted={(isCompleted) => setTaskCompleted({ id: task._id, isCompleted })}
-                            setMiscBlockerCompleted={(id, isCompleted) => setMiscBlockerCompleted({ id, isCompleted })}
-                            linkBlocker={async (blocker) => {
-                                await linkBlocker({ id: task._id, blocker });
-                            }}
-                            unlinkBlocker={async (blocker) => {
-                                await unlinkBlocker({ id: task._id, blocker });
-                            }}
-                        />
-                    </li>)}
-                <li><CreateTaskForm project={project} /></li>
-            </ul>
-        </div>)}
+        {tasksByProject.entrySeq()
+            .sortBy(([p,]) => [p === undefined, p])
+            .map(([project, projectTasks]) => <div key={project?._id ?? "<undef>"} className="card p-2">
+                <h3>
+                    {project === undefined
+                        ? "(misc)"
+                        : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState}>{project.name}</Link>
+                    }
+                </h3>
+                <ul>
+                    {projectTasks
+                        .sortBy(t => [t.completedAtMillis !== undefined, getOutstandingBlockers({ task: t, tasksById, miscBlockersById, now }).size > 0, t.text])
+                        .map((task) => <li key={task._id}>
+                            <Task
+                                task={task}
+                                tasksById={tasksById}
+                                miscBlockersById={miscBlockersById}
+                                setCompleted={(isCompleted) => setTaskCompleted({ id: task._id, isCompleted })}
+                                setMiscBlockerCompleted={(id, isCompleted) => setMiscBlockerCompleted({ id, isCompleted })}
+                                linkBlocker={async (blocker) => {
+                                    await linkBlocker({ id: task._id, blocker });
+                                }}
+                                unlinkBlocker={async (blocker) => {
+                                    await unlinkBlocker({ id: task._id, blocker });
+                                }}
+                            />
+                        </li>)}
+                    <li><CreateTaskForm project={project} /></li>
+                </ul>
+            </div>)}
 
         <h1 className="mt-4"> All misc blockers </h1>
         <ul>
-            {List(blockers)
+            {blockers
                 .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
                 .map((blocker) => <li key={blocker._id}>{showMiscBlocker(blocker)}</li>)}
         </ul>
