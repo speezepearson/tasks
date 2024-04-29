@@ -39,6 +39,13 @@ function useNow(intervalMillis: number) {
     return now;
 }
 
+function textMatches(text: string, query: string): boolean {
+    for (const word of query.split(/\s+/)) {
+        if (!text.toLowerCase().includes(word.toLowerCase())) return false;
+    }
+    return true;
+}
+
 function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
     linkBlocker: (id: typeof api.tasks.linkBlocker._args.blocker) => Promise<unknown>,
     tasks: List<Doc<'tasks'>>,
@@ -53,10 +60,10 @@ function AddBlockerForm({ linkBlocker, tasks, miscBlockers }: {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
     const matchingTasks = useMemo(() => {
-        return tasks.filter((task) => field && task.text.toLowerCase().includes(field.toLowerCase()));
+        return field && field.length > 1 ? tasks.filter((task) => textMatches(task.text, field)) : tasks.take(0);
     }, [tasks, field]);
     const matchingMiscBlockers = useMemo(() => {
-        return miscBlockers.filter((blocker) => field && blocker.text.toLowerCase().includes(field.toLowerCase()));
+        return field && field.length > 1 ? miscBlockers.filter((blocker) => textMatches(blocker.text, field)) : miscBlockers.take(0);
     }, [miscBlockers, field]);
     const matches = useMemo(() => {
         return List([
