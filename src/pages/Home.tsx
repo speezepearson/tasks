@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { getProjectUrl } from "../routes";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
@@ -10,6 +10,7 @@ import moment from "moment";
 import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
 import Markdown from "react-markdown";
+import { useNow } from "../common";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -41,17 +42,6 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
         <input className="form-control form-control-sm d-inline-block" ref={inputRef} style={{ width: '20em' }} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
         <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+task</button>
     </form>
-}
-
-function useNow(intervalMillis: number) {
-    const [now, setNow] = useState(new Date());
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setNow(new Date());
-        }, intervalMillis);
-        return () => { clearInterval(interval) };
-    }, [intervalMillis]);
-    return now;
 }
 
 function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
@@ -122,7 +112,7 @@ function Task({ task, tasksById, miscBlockersById }: {
     const setCompleted = useMutation(api.tasks.setCompleted);
     const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
-    const now = useNow(10000);
+    const now = useNow();
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
@@ -238,7 +228,7 @@ export function Page() {
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
     const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
-    const now = useNow(10000);
+    const now = useNow();
 
     const outstandingBlockers = useMemo(() => {
         return tasksById && miscBlockersById && tasks && Map(

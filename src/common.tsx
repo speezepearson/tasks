@@ -1,3 +1,5 @@
+import { createContext, useContext, useEffect, useState } from "react";
+
 export type ReqStatus =
     | { type: 'working' }
     | { type: 'idle' }
@@ -27,4 +29,20 @@ export function errToString(e: unknown): string {
         return 'Unknown error :(';
     }
 
+}
+
+
+const timeContext = createContext(new Date());
+export function TickProvider({ children }: { children: React.ReactNode }) {
+    const [now, setNow] = useState(new Date());
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNow(new Date());
+        }, 10000);
+        return () => clearInterval(interval);
+    }, []);
+    return <timeContext.Provider value={now}>{children}</timeContext.Provider>
+}
+export function useNow() {
+    return useContext(timeContext);
 }
