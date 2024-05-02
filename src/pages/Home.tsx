@@ -339,112 +339,20 @@ export function Page() {
 
 function Inbox() {
     const captures = useQuery(api.captures.list);
+    const archive = useMutation(api.captures.archive);
 
     return <div>
         <ul className="list-group">
 
-            <li className="list-group-item">
+            <li className="list-group-item text-center">
                 <QuickCaptureForm />
             </li>
 
             {captures?.map((capture) => <li key={capture._id} className="list-group-item">
-                <details>
-                    <summary>{capture.text}</summary>
-                    <DissolveForm capture={capture} />
-                </details>
+                {capture.text}
+                <button className="btn btn-sm btn-outline-secondary ms-2" onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</button>
             </li>)}
         </ul>
 
-    </div>
-}
-
-function DissolveForm({ capture }: {
-    capture: Doc<'captures'>,
-}) {
-    const dissolve = useMutation(api.captures.dissolve);
-
-    const [dissolveInto, setDissolveInto] = useState<{
-        tasks: { text: string }[],
-        miscBlockers: { text: string }[],
-    }>({ tasks: [], miscBlockers: [] });
-    const [dissolveIntoTaskText, setDissolveIntoTaskText] = useState("");
-    const [dissolveIntoMiscBlockerText, setDissolveIntoMiscBlockerText] = useState("");
-
-    const [working, setWorking] = useState(false);
-
-    return <div>
-        <form onSubmit={(e) => {
-            e.preventDefault();
-            if (working) return;
-            setWorking(true);
-            (async () => {
-                await dissolve({ id: capture._id, tasks: dissolveInto.tasks.map(t => ({ ...t, blockers: [] })), miscBlockers: dissolveInto.miscBlockers })
-                setDissolveInto({ tasks: [], miscBlockers: [] })
-            })().catch(console.error).finally(() => { setWorking(false) });
-        }}>
-            <div className="row">
-                <div className="col-6">
-                    Create tasks:
-                    <ul className="list-group">
-                        {dissolveInto.tasks.map((task, i) => <li key={i} className="list-group-item">
-                            {task.text}
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => {
-                                setDissolveInto({
-                                    ...dissolveInto,
-                                    tasks: dissolveInto.tasks.filter((_, j) => i !== j),
-                                });
-                            }}>-</button>
-                        </li>)}
-                        <li className="list-group-item">
-                            <input
-                                value={dissolveIntoTaskText}
-                                onChange={(e) => { setDissolveIntoTaskText(e.target.value) }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        setDissolveInto({
-                                            ...dissolveInto,
-                                            tasks: [...dissolveInto.tasks, { text: dissolveIntoTaskText }],
-                                        });
-                                        setDissolveIntoTaskText("");
-                                    }
-                                }}
-                            />
-                        </li>
-                    </ul>
-                </div>
-                <div className="col-6">
-                    Create misc blockers:
-                    <ul className="list-group">
-                        {dissolveInto.miscBlockers.map((miscBlocker, i) => <li key={i} className="list-group-item">
-                            {miscBlocker.text}
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => {
-                                setDissolveInto({
-                                    ...dissolveInto,
-                                    miscBlockers: dissolveInto.miscBlockers.filter((_, j) => i !== j),
-                                });
-                            }}>-</button>
-                        </li>)}
-                        <li className="list-group-item">
-                            <input
-                                value={dissolveIntoMiscBlockerText}
-                                onChange={(e) => { setDissolveIntoMiscBlockerText(e.target.value) }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        setDissolveInto({
-                                            ...dissolveInto,
-                                            miscBlockers: [...dissolveInto.miscBlockers, { text: dissolveIntoMiscBlockerText }],
-                                        });
-                                        setDissolveIntoMiscBlockerText("");
-                                    }
-                                }}
-                            />
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <button className="btn btn-sm btn-outline-primary" type="submit">dissolve</button>
-        </form>
     </div>
 }
