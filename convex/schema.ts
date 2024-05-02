@@ -10,6 +10,7 @@ export const vBlocker = v.union(
 export default defineSchema({
   projects: defineTable({
     name: v.string(),
+    color: v.optional(v.string()),
   }),
 
   captures: defineTable({

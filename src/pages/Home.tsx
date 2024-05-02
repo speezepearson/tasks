@@ -208,7 +208,7 @@ function ProjectCard({
         }
         return [showTasks, tasksHiddenBecauseCompleted, tasksHiddenBecauseBlocked];
     }, [projectTasks, showCompleted, showBlocked, outstandingBlockers]);
-    return <div key={project?._id ?? "<undef>"} className="mt-4 p-2 border-start border-3">
+    return <div key={project?._id ?? "<undef>"} className="mt-4 p-2 border-start border-3" style={project?.color ? { backgroundColor: project.color } : {}}>
         <h3>
             {project === undefined
                 ? "(misc)"
@@ -313,7 +313,12 @@ export function Page() {
             </div>
             <ul className="list-group">
                 {nextActions
-                    .map((task) => <li key={task._id} className="list-group-item">
+                    .map((task) => <li key={task._id} className="list-group-item" style={(() => {
+                        if (task.project === undefined) return;
+                        const project = projectsById.get(task.project);
+                        if (project === undefined) return;
+                        return { backgroundColor: project.color };
+                    })()}>
                         <Task
                             task={task}
                             tasksById={tasksById}
