@@ -1,4 +1,4 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 
@@ -28,8 +28,20 @@ export function QuickCaptureForm() {
 }
 
 export function Page() {
-    return <div className="text-center">
-        <h1>Quick Capture</h1>
-        <QuickCaptureForm />
+    const captures = useQuery(api.captures.list, { limit: 10 });
+    return <div>
+        <div className="text-center">
+            <h1>Quick Capture</h1>
+            <QuickCaptureForm />
+        </div>
+
+        <hr />
+
+        <h2>Recent captures</h2>
+        <ul className="list-group">
+            {captures === undefined
+                ? <li className="list-group-item">Loading...</li>
+                : captures.map((capture, i) => <li key={i} className="list-group-item">{capture.text}</li>)}
+        </ul>
     </div>
 }

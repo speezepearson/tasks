@@ -12,9 +12,14 @@ export const create = mutation({
 });
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("captures").withIndex('archivedAtMillis', q => q.eq('archivedAtMillis', undefined)).order('desc').collect();
+  args: {
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.query("captures")
+      .withIndex('archivedAtMillis', q => q.eq('archivedAtMillis', undefined))
+      .order('desc')
+      .take(args.limit);
   },
 });
 
