@@ -51,3 +51,11 @@ export function TickProvider({ children }: { children: React.ReactNode; }) {
 export function useNow() {
     return useContext(timeContext);
 }
+export function textMatches(text: string, query: string): boolean {
+    for (const word of query.split(/\s+/)) {
+        if (!text.toLowerCase().includes(word.toLowerCase())) {
+            return false;
+        }
+    }
+    return true;
+}

@@ -8,7 +8,7 @@ import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
-import { useNow } from "../common";
+import { textMatches, useNow } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
 import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
@@ -260,6 +260,8 @@ export function Page() {
             .filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty());
     }, [tasks, outstandingBlockers]);
 
+    const [nextActionFilterField, setNextActionFilterField] = useState("");
+
     if (projects === undefined
         || tasks === undefined
         || blockers === undefined
@@ -304,15 +306,26 @@ export function Page() {
         <div className="mt-4">
             <div className="text-center">
                 <h1>Next Actions</h1>
+                <input
+                    className="form-control form-control-sm d-inline-block"
+                    value={nextActionFilterField}
+                    onChange={(e) => { setNextActionFilterField(e.target.value) }}
+                    placeholder="filter"
+                    style={{ maxWidth: '10em' }}
+                />
             </div>
-            <div>
+            <div className="mt-1">
                 {tasksByProject.entrySeq()
                     .sortBy(([p, pt]) => [p === undefined, pt.isEmpty(), pt.filter(t => t.completedAtMillis).size > 0, p?._creationTime])
                     .map(([p, projectTasks]) => (
                         <ProjectCard
                             key={p?._id ?? "<undef>"}
                             project={p}
-                            projectTasks={projectTasks.filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty())}
+                            projectTasks={projectTasks.filter((task) =>
+                                task.completedAtMillis === undefined &&
+                                outstandingBlockers.get(task._id)!.isEmpty() &&
+                                textMatches(task.text, nextActionFilterField)
+                            )}
                             tasksById={tasksById}
                             miscBlockersById={miscBlockersById}
                         />

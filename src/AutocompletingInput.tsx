@@ -1,15 +1,7 @@
 import { List } from "immutable";
 import { useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
-
-function textMatches(text: string, query: string): boolean {
-    for (const word of query.split(/\s+/)) {
-        if (!text.toLowerCase().includes(word.toLowerCase())) {
-            return false;
-        }
-    }
-    return true;
-}
+import { textMatches } from "./common";
 
 export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: {
     options: List<T>,
