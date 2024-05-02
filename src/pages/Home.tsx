@@ -9,6 +9,7 @@ import { Doc, Id } from "../../convex/_generated/dataModel";
 import moment from "moment";
 import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
+import Markdown from "react-markdown";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -134,7 +135,7 @@ function Task({ task, tasksById, miscBlockersById }: {
             disabled={blocked && task.completedAtMillis === undefined} />
         {" "}
         <label htmlFor={`task-${task._id}`} className={blocked ? "text-muted" : ""}>
-            {task.text}
+            <Markdown>{task.text}</Markdown>
         </label>
         {" "}
         <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
@@ -149,7 +150,7 @@ function Task({ task, tasksById, miscBlockersById }: {
                         switch (blocker.type) {
                             case "task":
                                 return <li key={blocker.id} className="list-group-item">
-                                    {tasksById.get(blocker.id)!.text}
+                                    <Markdown>{tasksById.get(blocker.id)!.text}</Markdown>
                                     {" "} {unlinkButton}
                                 </li>
                             case "time":
@@ -167,7 +168,7 @@ function Task({ task, tasksById, miscBlockersById }: {
                                     />
                                     {" "}
                                     <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
-                                        {miscBlockersById.get(blocker.id)!.text}
+                                        <Markdown>{miscBlockersById.get(blocker.id)!.text}</Markdown>
                                     </label>
                                     {" "} {unlinkButton}
                                 </li>
@@ -312,7 +313,7 @@ export function Page() {
             {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
                 <span className="text-danger">TIMED OUT: </span>}
             <label htmlFor={`miscBlocker-${blocker._id}`}>
-                {blocker.text}
+                <Markdown>{blocker.text}</Markdown>
                 {" "}
                 {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {moment(blocker.timeoutMillis).fromNow()})</span>}
             </label>
@@ -402,7 +403,7 @@ function Inbox() {
             </li>
 
             {captures?.map((capture) => <li key={capture._id} className="list-group-item">
-                {capture.text}
+                <Markdown>{capture.text}</Markdown>
                 <button className="btn btn-sm btn-outline-secondary ms-2" onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</button>
             </li>)}
         </ul>

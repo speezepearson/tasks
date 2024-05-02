@@ -5,6 +5,8 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 
 import { router } from './routes.tsx'
 
+import './main.css';
+
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 ReactDOM.createRoot(document.getElementById('root')!).render( // eslint-disable-line @typescript-eslint/no-non-null-assertion

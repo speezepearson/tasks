@@ -1,5 +1,6 @@
 import { List } from "immutable";
 import { useMemo, useRef, useState } from "react";
+import Markdown from "react-markdown";
 
 function textMatches(text: string, query: string): boolean {
     for (const word of query.split(/\s+/)) {
@@ -82,7 +83,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
                     onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
                     onClick={() => { submit(i).catch(console.error) }}
                 >
-                    {text}
+                    <Markdown>{text}</Markdown>
                 </li>)}
             </ul>
         </div>
