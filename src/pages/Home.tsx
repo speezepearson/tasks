@@ -39,8 +39,10 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
             setJustCreated(true);
         });
     }}>
-        <input className="form-control form-control-sm d-inline-block" ref={inputRef} style={{ width: '20em' }} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
-        <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+task</button>
+        <div className="d-flex flex-row">
+            <input className="form-control form-control-sm d-inline-block" ref={inputRef} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new task text" />
+            <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+task</button>
+        </div>
     </form>
 }
 
@@ -117,18 +119,22 @@ function Task({ task, tasksById, miscBlockersById }: {
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
     return <div>
-        <input
-            type="checkbox"
-            id={`task-${task._id}`}
-            checked={task.completedAtMillis !== undefined}
-            onChange={(e) => { setCompleted({ id: task._id, isCompleted: e.target.checked }).catch(console.error) }}
-            disabled={blocked && task.completedAtMillis === undefined} />
-        {" "}
-        <label htmlFor={`task-${task._id}`} className={blocked ? "text-muted" : ""}>
-            <Markdown>{task.text}</Markdown>
-        </label>
-        {" "}
-        <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
+        <div className="d-flex flex-row">
+            <input
+                className="align-self-start mt-1"
+                type="checkbox"
+                id={`task-${task._id}`}
+                checked={task.completedAtMillis !== undefined}
+                onChange={(e) => { setCompleted({ id: task._id, isCompleted: e.target.checked }).catch(console.error) }}
+                disabled={blocked && task.completedAtMillis === undefined} />
+            {" "}
+            <label htmlFor={`task-${task._id}`} className={`ms-1 overflow-auto ${blocked ? "text-muted" : ""}`} style={{ maxHeight: '4em' }}>
+                <Markdown>{task.text}</Markdown>
+            </label>
+            <div className="align-self-start ms-auto">
+                <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
+            </div>
+        </div>
         {blocked
             && <div className="ms-4">
                 blocked on:
@@ -224,7 +230,15 @@ export function Page() {
     const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
-    const tasksByProject = useMemo(() => projectsById && tasks?.groupBy(t => t.project && projectsById.get(t.project)), [tasks, projectsById]);
+    const tasksByProject = useMemo(() => {
+        if (projectsById === undefined || tasks === undefined) return undefined;
+        let res = tasks.groupBy(t => t.project && projectsById.get(t.project));
+        projectsById.forEach((project) => {
+            if (!res.has(project)) res = res.set(project, List());
+        });
+        if (!res.has(undefined)) res = res.set(undefined, List());
+        return res;
+    }, [tasks, projectsById]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
     const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
@@ -287,7 +301,7 @@ export function Page() {
             </div>
             <div>
                 {tasksByProject.entrySeq()
-                    .sortBy(([p,]) => [p === undefined, p])
+                    .sortBy(([p, pt]) => [p === undefined, pt.isEmpty(), pt.filter(t => t.completedAtMillis).size > 0, p?._creationTime])
                     .map(([p, projectTasks]) => (
                         <ProjectCard
                             key={p?._id ?? "<undef>"}
@@ -305,7 +319,7 @@ export function Page() {
                 <h1>Projects</h1>
             </div>
             {tasksByProject.entrySeq()
-                .sortBy(([p,]) => [p === undefined, p])
+                .sortBy(([p, pt]) => [p === undefined, pt.isEmpty(), pt.filter(t => t.completedAtMillis).size > 0, p?._creationTime])
                 .map(([project, projectTasks]) => (
                     <ProjectCard
                         key={project?._id ?? "<undef>"}
