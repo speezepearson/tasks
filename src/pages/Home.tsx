@@ -24,8 +24,8 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
             setText("");
         })().catch(console.error).finally(() => { setWorking(false) });
     }}>
-        <input disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
-        <button className="btn btn-sm btn-outline-secondary" disabled={working} type="submit">+</button>
+        <input className="form-control form-control-sm d-inline-block" style={{ width: '20em' }} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
+        <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+task</button>
     </form>
 }
 

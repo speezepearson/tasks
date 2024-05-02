@@ -23,7 +23,7 @@ export function QuickCaptureForm() {
             className="form-control form-control-sm d-inline-block"
             style={{ width: "20em" }}
         />
-        <button className="btn btn-sm btn-outline-secondary" disabled={working} type="submit">+</button>
+        <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+note</button>
     </form>
 }
 
