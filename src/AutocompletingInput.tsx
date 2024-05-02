@@ -34,7 +34,6 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
 
     const submit = async (selectedIndex: number | null) => {
         console.log("submit", selectedIndex, field, working);
-        if (field === null) return;
         if (working) return;
         setWorking(true);
         try {

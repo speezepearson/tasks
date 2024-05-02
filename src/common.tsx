@@ -1,3 +1,5 @@
+/* eslint react-refresh/only-export-components: 0 */
+
 import { createContext, useContext, useEffect, useState } from "react";
 
 export type ReqStatus =
@@ -32,17 +34,20 @@ export function errToString(e: unknown): string {
 }
 
 
+
 const timeContext = createContext(new Date());
-export function TickProvider({ children }: { children: React.ReactNode }) {
+
+export function TickProvider({ children }: { children: React.ReactNode; }) {
     const [now, setNow] = useState(new Date());
     useEffect(() => {
         const interval = setInterval(() => {
             setNow(new Date());
         }, 10000);
-        return () => clearInterval(interval);
+        return () => { clearInterval(interval) };
     }, []);
-    return <timeContext.Provider value={now}>{children}</timeContext.Provider>
+    return <timeContext.Provider value={now}>{children}</timeContext.Provider>;
 }
+
 export function useNow() {
     return useContext(timeContext);
 }

@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { vBlocker } from "./schema";
 
 export const create = mutation({
   args: {

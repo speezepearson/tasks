@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { getProjectUrl } from "../routes";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
@@ -240,8 +240,8 @@ export function Page() {
     const nextActions = useMemo(() => {
         return outstandingBlockers && tasks
             ?.sortBy((task) => [task.project === undefined, task.project])
-            ?.filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty());
-    }, [tasks, outstandingBlockers, now]);
+            .filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty());
+    }, [tasks, outstandingBlockers]);
 
     if (projects === undefined
         || tasks === undefined
