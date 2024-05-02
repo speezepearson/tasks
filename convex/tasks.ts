@@ -28,6 +28,16 @@ export const list = query({
   },
 });
 
+export const reword = mutation({
+  args: {
+    id: v.id("tasks"),
+    text: v.string(),
+  },
+  handler: async (ctx, { id, text }) => {
+    await ctx.db.patch(id, { text });
+  },
+});
+
 export const setCompleted = mutation({
   args: {
     id: v.id("tasks"),

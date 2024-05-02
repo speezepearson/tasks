@@ -115,6 +115,9 @@ function Task({ task, tasksById, miscBlockersById }: {
     const setCompleted = useMutation(api.tasks.setCompleted);
     const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
+    const reword = useMutation(api.tasks.reword);
+    const [editField, setEditField] = useState<string | null>(null);
+
     const now = useNow();
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
@@ -129,10 +132,40 @@ function Task({ task, tasksById, miscBlockersById }: {
                 onChange={(e) => { setCompleted({ id: task._id, isCompleted: e.target.checked }).catch(console.error) }}
                 disabled={blocked && task.completedAtMillis === undefined} />
             {" "}
-            <label htmlFor={`task-${task._id}`} className={`ms-1 overflow-auto ${blocked ? "text-muted" : ""}`} style={{ maxHeight: '4em' }}>
-                <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
-            </label>
-            <div className="align-self-start ms-auto">
+            {editField === null
+                ? <label
+                    htmlFor={`task-${task._id}`}
+                    className={`ms-1 overflow-hidden text-truncate ${blocked ? "text-muted" : ""}`}
+                    style={{}}>
+                    <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
+                </label>
+                : <input
+                    type="text"
+                    className="form-control form-control-sm ms-1"
+                    value={editField}
+                    onChange={(e) => { setEditField(e.target.value) }}
+                    onKeyDown={(e) => {
+                        switch (e.key) {
+                            case "Enter":
+                                e.preventDefault();
+                                (async () => {
+                                    await reword({ id: task._id, text: editField }).catch(console.error);
+                                })().catch(console.error);
+                                setEditField(null);
+                                break;
+                            case "Escape":
+                                e.preventDefault();
+                                setEditField(null);
+                                break;
+                        }
+                    }}
+                    autoFocus
+                />}
+            <div className="ms-auto"></div>
+            <div className="align-self-start">
+                <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setEditField(task.text) }}>edit</button>
+            </div>
+            <div className="align-self-start">
                 <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
             </div>
         </div>
@@ -291,7 +324,7 @@ export function Page() {
                         <span className="text-danger">TIMED OUT: </span>}
                     <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
                     {" "}
-                    {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
+                    {blocker.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
                 </label>
             </div>
         </div>
