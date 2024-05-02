@@ -6,16 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-// import moment from "moment";
 import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
-import Markdown from "react-markdown";
 import { useNow } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
-
-function moment(x: number) {
-    return { fromNow: () => x.toString() }
-}
+import { formatRelative } from "date-fns";
+import { SingleLineMarkdown } from "../SingleLineMarkdown";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -134,7 +130,7 @@ function Task({ task, tasksById, miscBlockersById }: {
                 disabled={blocked && task.completedAtMillis === undefined} />
             {" "}
             <label htmlFor={`task-${task._id}`} className={`ms-1 overflow-auto ${blocked ? "text-muted" : ""}`} style={{ maxHeight: '4em' }}>
-                <Markdown>{task.text}</Markdown>
+                <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
             </label>
             <div className="align-self-start ms-auto">
                 <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
@@ -151,12 +147,12 @@ function Task({ task, tasksById, miscBlockersById }: {
                         switch (blocker.type) {
                             case "task":
                                 return <li key={blocker.id} className="list-group-item">
-                                    <Markdown>{tasksById.get(blocker.id)!.text}</Markdown>
+                                    <SingleLineMarkdown>{tasksById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
                                 </li>
                             case "time":
                                 return <li key="__time" className="list-group-item">
-                                    {moment(blocker.millis).fromNow()}
+                                    {formatRelative(blocker.millis, new Date())}
                                     {" "} {unlinkButton}
                                 </li>
                             case "misc":
@@ -169,7 +165,7 @@ function Task({ task, tasksById, miscBlockersById }: {
                                     />
                                     {" "}
                                     <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
-                                        <Markdown>{miscBlockersById.get(blocker.id)!.text}</Markdown>
+                                        <SingleLineMarkdown>{miscBlockersById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     </label>
                                     {" "} {unlinkButton}
                                 </li>
@@ -287,9 +283,9 @@ export function Page() {
             {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
                 <span className="text-danger">TIMED OUT: </span>}
             <label htmlFor={`miscBlocker-${blocker._id}`}>
-                <Markdown>{blocker.text}</Markdown>
+                <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
                 {" "}
-                {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {moment(blocker.timeoutMillis).fromNow()})</span>}
+                {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {formatRelative(blocker.timeoutMillis, new Date())})</span>}
             </label>
         </div>
     }
@@ -362,7 +358,7 @@ function Inbox() {
             </li>
 
             {captures?.map((capture) => <li key={capture._id} className="list-group-item">
-                <Markdown>{capture.text}</Markdown>
+                <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
                 <button className="btn btn-sm btn-outline-secondary ms-2" onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</button>
             </li>)}
         </ul>

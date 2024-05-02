@@ -5,7 +5,6 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 
 import { router } from './routes.tsx'
 
-import './main.css';
 import { TickProvider } from './common.tsx';
 
 console.log("SRP: hi");
