@@ -234,9 +234,9 @@ function ProjectCard({
             }
         </h3>
         <ul className="list-group">
-            <li className="list-group-item"><CreateTaskForm project={project} /></li>
+            <li className="list-group-item py-1"><CreateTaskForm project={project} /></li>
             {showTasks
-                .map((task) => <li key={task._id} className="list-group-item">
+                .map((task) => <li key={task._id} className="list-group-item py-0">
                     <Task
                         task={task}
                         tasksById={tasksById}
@@ -331,7 +331,7 @@ export function Page() {
             </div>
             <ul className="list-group">
                 {nextActions
-                    .map((task) => <li key={task._id} className="list-group-item" style={(() => {
+                    .map((task) => <li key={task._id} className="list-group-item py-0" style={(() => {
                         if (task.project === undefined) return;
                         const project = projectsById.get(task.project);
                         if (project === undefined) return;

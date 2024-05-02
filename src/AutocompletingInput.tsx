@@ -77,7 +77,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
         >
             <small className="text-muted">Select with &uarr;/&darr;, (Shift+)Tab; confirm with &#x23ce;</small>
             <ul className="list-group">
-                {matches.map(([, text], i) => <li key={i} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
+                {matches.map(([, text], i) => <li key={i} className={`list-group-item py-0 ${i === selectedIndex ? 'active' : ''}`}
                     onMouseEnter={() => { setSelectedIndex(i) }}
                     onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
                     onClick={() => { submit(i).catch(console.error) }}
