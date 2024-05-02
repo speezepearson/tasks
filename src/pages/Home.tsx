@@ -196,75 +196,35 @@ function ProjectCard({
     projectTasks,
     tasksById,
     miscBlockersById,
-    showCompleted,
-    showBlocked,
 }: {
     project: Doc<'projects'> | undefined,
     projectTasks: List<Doc<'tasks'>>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
     miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
-    showCompleted: boolean,
-    showBlocked: boolean,
 }) {
 
-    const now = useNow(10000);
-    const outstandingBlockers = useMemo(() => {
-        return Map(projectTasks.map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })]));
-    }, [projectTasks, tasksById, miscBlockersById, now]);
+    const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime]);
 
-    const [showTasks, tasksHiddenBecauseCompleted, tasksHiddenBecauseBlocked] = useMemo(() => {
-        let tasksHiddenBecauseCompleted = List<Doc<'tasks'>>();
-        let tasksHiddenBecauseBlocked = List<Doc<'tasks'>>();
-        let showTasks = List<Doc<'tasks'>>();
-        for (const task of projectTasks) {
-            if (!showCompleted && task.completedAtMillis !== undefined) {
-                tasksHiddenBecauseCompleted = tasksHiddenBecauseCompleted.push(task);
-            } else if (!showBlocked && !outstandingBlockers.get(task._id, List()).isEmpty()) {
-                tasksHiddenBecauseBlocked = tasksHiddenBecauseBlocked.push(task);
-            } else {
-                showTasks = showTasks.push(task);
-            }
-        }
-        return [showTasks, tasksHiddenBecauseCompleted, tasksHiddenBecauseBlocked];
-    }, [projectTasks, showCompleted, showBlocked, outstandingBlockers]);
-    return <div key={project?._id ?? "<undef>"} className="mt-4 p-2 border-start border-3" style={project?.color ? { backgroundColor: project.color } : {}}>
-        <h3>
+    return <div className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
+        <div className="fs-5" >
             {project === undefined
                 ? "(misc)"
-                : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState}>{project.name}</Link>
+                : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState} className="text-decoration-none">{project.name}</Link>
             }
-        </h3>
-        <ul className="list-group">
-            <li className="list-group-item py-1"><CreateTaskForm project={project} /></li>
-            {showTasks
-                .map((task) => <li key={task._id} className="list-group-item py-0">
+        </div>
+        <div className="ms-4">
+            <div className="py-1"><CreateTaskForm project={project} /></div>
+            {showTasks.map((task) =>
+                <div key={task._id} className="" >
                     <Task
                         task={task}
                         tasksById={tasksById}
                         miscBlockersById={miscBlockersById}
                     />
-                </li>)}
-            {(!tasksHiddenBecauseCompleted.isEmpty() || !tasksHiddenBecauseBlocked.isEmpty()) && <li className="list-group-item text-muted">
-                <details>
-                    <summary>
-                        {!tasksHiddenBecauseCompleted.isEmpty() && <span className="me-2">+{tasksHiddenBecauseCompleted.size} completed</span>}
-                        {!tasksHiddenBecauseBlocked.isEmpty() && <span className="me-2">+{tasksHiddenBecauseBlocked.size} blocked</span>}
-                    </summary>
-
-                    <ul className="list-group">
-                        {tasksHiddenBecauseCompleted.concat(tasksHiddenBecauseBlocked).map((task) => <li key={task._id} className="list-group-item">
-                            <Task
-                                task={task}
-                                tasksById={tasksById}
-                                miscBlockersById={miscBlockersById}
-                            />
-                        </li>)}
-                    </ul>
-                </details>
-            </li>}
-        </ul>
-    </div>
-
+                </div>
+            )}
+        </div>
+    </div>;
 }
 
 export function Page() {
@@ -280,14 +240,18 @@ export function Page() {
 
     const now = useNow(10000);
 
-    const [showCompleted, setShowCompleted] = useState(false);
-    const [showBlocked, setShowBlocked] = useState(false);
+    const outstandingBlockers = useMemo(() => {
+        return tasksById && miscBlockersById && tasks && Map(
+            tasks
+                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })])
+        );
+    }, [tasks, tasksById, miscBlockersById, now]);
 
     const nextActions = useMemo(() => {
-        return tasksById && miscBlockersById && tasks
+        return outstandingBlockers && tasks
             ?.sortBy((task) => [task.project === undefined, task.project])
-            ?.filter((task) => task.completedAtMillis === undefined && getOutstandingBlockers({ task, tasksById, miscBlockersById, now }).isEmpty());
-    }, [tasks, tasksById, miscBlockersById, now]);
+            ?.filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty());
+    }, [tasks, outstandingBlockers, now]);
 
     if (projects === undefined
         || tasks === undefined
@@ -297,6 +261,7 @@ export function Page() {
         || tasksById === undefined
         || miscBlockersById === undefined
         || nextActions === undefined
+        || outstandingBlockers === undefined
     ) {
         return <div>Loading...</div>
     }
@@ -330,39 +295,24 @@ export function Page() {
             <div className="text-center">
                 <h1>Next Actions</h1>
             </div>
-            <ul className="list-group">
-                {nextActions
-                    .map((task) => <li key={task._id} className="list-group-item py-0" style={(() => {
-                        if (task.project === undefined) return;
-                        const project = projectsById.get(task.project);
-                        if (project === undefined) return;
-                        return { backgroundColor: project.color };
-                    })()}>
-                        <Task
-                            task={task}
+            <div>
+                {tasksByProject.entrySeq()
+                    .sortBy(([p,]) => [p === undefined, p])
+                    .map(([p, projectTasks]) => (
+                        <ProjectCard
+                            key={p?._id ?? "<undef>"}
+                            project={p}
+                            projectTasks={projectTasks.filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty())}
                             tasksById={tasksById}
                             miscBlockersById={miscBlockersById}
                         />
-                    </li>)
-                }
-            </ul>
+                    ))}
+            </div>
         </div>
 
         <div className="mt-4">
             <div className="text-center">
                 <h1>Projects</h1>
-                <div>
-                    <div className="me-4">
-                        <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
-                        {" "}
-                        <label htmlFor="showCompleted">Show completed</label>
-                    </div>
-                    <div className="me-4">
-                        <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => { setShowBlocked(e.target.checked) }} />
-                        {" "}
-                        <label htmlFor="showBlocked">Show blocked</label>
-                    </div>
-                </div>
             </div>
             {tasksByProject.entrySeq()
                 .sortBy(([p,]) => [p === undefined, p])
@@ -373,17 +323,14 @@ export function Page() {
                         projectTasks={projectTasks}
                         tasksById={tasksById}
                         miscBlockersById={miscBlockersById}
-                        showCompleted={showCompleted}
-                        showBlocked={showBlocked}
                     />
                 ))}
         </div>
 
         <div className="mt-4">
-            <h1 className="text-center"> All misc blockers </h1>
+            <h1 className="text-center"> Misc blockers </h1>
             <ul className="list-group">
                 {blockers
-                    .filter(b => showCompleted || b.completedAtMillis === undefined)
                     .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
                     .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
             </ul>
