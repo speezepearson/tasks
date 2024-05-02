@@ -10,7 +10,7 @@ import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
 import { useNow } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
-import { formatRelative } from "date-fns";
+import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
@@ -152,7 +152,7 @@ function Task({ task, tasksById, miscBlockersById }: {
                                 </li>
                             case "time":
                                 return <li key="__time" className="list-group-item">
-                                    {formatRelative(blocker.millis, new Date())}
+                                    {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
                                 </li>
                             case "misc":
@@ -287,7 +287,7 @@ export function Page() {
             <label htmlFor={`miscBlocker-${blocker._id}`}>
                 <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
                 {" "}
-                {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {formatRelative(blocker.timeoutMillis, new Date())})</span>}
+                {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
             </label>
         </div>
     }
