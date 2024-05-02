@@ -295,45 +295,49 @@ export function Page() {
     }
 
     return <div>
-        <h1 className="text-center">Inbox</h1>
-        <Inbox />
-
-
-        <h1 className="mt-4 text-center">Projects</h1>
-        <div className="d-flex flex-row">
-            <div className="me-4">
-                <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
-                {" "}
-                <label htmlFor="showCompleted">Show completed</label>
-            </div>
-            <div className="me-4">
-                <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => { setShowBlocked(e.target.checked) }} />
-                {" "}
-                <label htmlFor="showBlocked">Show blocked</label>
-            </div>
+        <div>
+            <h1 className="text-center">Inbox</h1>
+            <Inbox />
         </div>
-        {tasksByProject.entrySeq()
-            .sortBy(([p,]) => [p === undefined, p])
-            .map(([project, projectTasks]) => (
-                <ProjectCard
-                    key={project?._id ?? "<undef>"}
-                    project={project}
-                    projectTasks={projectTasks}
-                    tasksById={tasksById}
-                    miscBlockersById={miscBlockersById}
-                    showCompleted={showCompleted}
-                    showBlocked={showBlocked}
-                />
-            ))}
 
+        <div className="mt-4">
+            <h1 className="text-center">Projects</h1>
+            <div className="d-flex flex-row">
+                <div className="me-4">
+                    <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
+                    {" "}
+                    <label htmlFor="showCompleted">Show completed</label>
+                </div>
+                <div className="me-4">
+                    <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => { setShowBlocked(e.target.checked) }} />
+                    {" "}
+                    <label htmlFor="showBlocked">Show blocked</label>
+                </div>
+            </div>
+            {tasksByProject.entrySeq()
+                .sortBy(([p,]) => [p === undefined, p])
+                .map(([project, projectTasks]) => (
+                    <ProjectCard
+                        key={project?._id ?? "<undef>"}
+                        project={project}
+                        projectTasks={projectTasks}
+                        tasksById={tasksById}
+                        miscBlockersById={miscBlockersById}
+                        showCompleted={showCompleted}
+                        showBlocked={showBlocked}
+                    />
+                ))}
+        </div>
 
-        <h1 className="mt-4 text-center"> All misc blockers </h1>
-        <ul className="list-group">
-            {blockers
-                .filter(b => showCompleted || b.completedAtMillis === undefined)
-                .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
-                .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
-        </ul>
+        <div className="mt-4">
+            <h1 className="text-center"> All misc blockers </h1>
+            <ul className="list-group">
+                {blockers
+                    .filter(b => showCompleted || b.completedAtMillis === undefined)
+                    .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
+                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
+            </ul>
+        </div>
     </div>
 }
 
