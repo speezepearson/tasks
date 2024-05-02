@@ -343,6 +343,9 @@ export function Page() {
                 {blockers
                     .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
                     .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
+                <li className="list-group-item">
+                    <CreateMiscBlockerForm />
+                </li>
             </ul>
         </div>
     </div>
@@ -366,4 +369,30 @@ function Inbox() {
         </ul>
 
     </div>
+}
+
+function CreateMiscBlockerForm() {
+    const createMiscBlocker = useMutation(api.miscBlockers.create);
+    const [text, setText] = useState("");
+    const [timeout, setTimeout] = useState(formatDate(new Date(), 'yyyy-MM-dd'));
+    const [working, setWorking] = useState(false);
+
+    return <form onSubmit={(e) => {
+        e.preventDefault();
+        if (working) return;
+        setWorking(true);
+        (async () => {
+            await createMiscBlocker({ text, timeoutMillis: timeout ? new Date(timeout).getTime() : undefined });
+            setText("");
+            setTimeout("");
+        })().catch(console.error).finally(() => {
+            setWorking(false);
+        });
+    }}>
+        <div className="d-flex flex-row">
+            <input className="form-control form-control-sm d-inline-block" value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new blocker text" />
+            <input className="form-control form-control-sm d-inline-block ms-1" type="date" value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
+            <button className="btn btn-sm btn-primary ms-1" type="submit">+blocker</button>
+        </div>
+    </form>
 }
