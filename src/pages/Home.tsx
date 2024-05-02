@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { getProjectUrl } from "../routes";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
@@ -14,6 +14,16 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
     const [text, setText] = useState("");
     const [working, setWorking] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const [justCreated, setJustCreated] = useState(false);
+
+    useEffect(() => {
+        if (justCreated) {
+            setJustCreated(false);
+            inputRef.current?.focus();
+        }
+    }, [justCreated]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -22,9 +32,12 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
         (async () => {
             await createTask({ text, project: project?._id });
             setText("");
-        })().catch(console.error).finally(() => { setWorking(false) });
+        })().catch(console.error).finally(() => {
+            setWorking(false);
+            setJustCreated(true);
+        });
     }}>
-        <input className="form-control form-control-sm d-inline-block" style={{ width: '20em' }} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
+        <input className="form-control form-control-sm d-inline-block" ref={inputRef} style={{ width: '20em' }} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} />
         <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+task</button>
     </form>
 }
