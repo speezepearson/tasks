@@ -10,7 +10,7 @@ export const create = mutation({
     project: v.optional(v.id('projects')),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("tasks", { text: args.text, project: args.project, blockers: args.blockers || [] });
+    return await ctx.db.insert("tasks", { text: args.text, project: args.project, blockers: args.blockers ?? [] });
   },
 });
 
