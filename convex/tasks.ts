@@ -1,6 +1,6 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { vBlocker, vPendingBlocker, vPendingMiscBlockerSpec, vPendingTaskSpec } from "./schema";
+import { vBlocker } from "./schema";
 import { Doc } from "./_generated/dataModel";
 
 export const create = mutation({
@@ -35,83 +35,6 @@ export const setCompleted = mutation({
   },
   handler: async (ctx, { id, isCompleted }) => {
     await ctx.db.patch(id, { completedAtMillis: isCompleted ? Date.now() : undefined });
-  },
-});
-
-export const unbundleBlockers = internalMutation({
-  args: {
-    project: v.optional(v.id('projects')),
-    newTasks: v.array(vPendingTaskSpec),
-    newMiscBlockers: v.array(vPendingMiscBlockerSpec),
-  },
-  handler: async (ctx, args) => {
-    const newBlockerIds = await Promise.all(args.newMiscBlockers.map(async (blocker) =>
-      await ctx.db.insert("miscBlockers", { text: blocker.text, timeoutMillis: blocker.timeoutMillis, completedAtMillis: undefined })
-    ));
-
-    const newTaskIds = await Promise.all(args.newTasks.map(async (newTask) =>
-      await ctx.db.insert("tasks", { text: newTask.text, project: args.project, blockers: [] })
-    ));
-
-    await Promise.all(args.newTasks.map((newTask, taskIndex) => {
-      return ctx.db.patch(newTaskIds[taskIndex], {
-        blockers: newTask.blockers.map((blocker) => {
-          switch (blocker.type) {
-            case 'task':
-            case 'time':
-            case 'misc':
-              return blocker;
-            case 'relTask':
-              return { type: 'task' as const, id: newTaskIds[blocker.index] };
-            case 'relMisc':
-              return { type: 'misc' as const, id: newBlockerIds[blocker.index] };
-          }
-        }),
-      });
-    }));
-
-    return {
-      newTaskIds,
-      newBlockerIds,
-    };
-  },
-});
-
-export const setBlockers = mutation({
-  args: {
-    id: v.id("tasks"),
-    blockers: v.object({
-      blockers: v.array(vPendingBlocker),
-      newTasks: v.array(vPendingTaskSpec),
-      newMiscBlockers: v.array(vPendingMiscBlockerSpec),
-    })
-  },
-  handler: async (ctx, { id, blockers }) => {
-    const thisTask = await ctx.db.get(id);
-    if (thisTask === null) {
-      throw new Error('Task not found');
-    }
-
-    const { newTaskIds, newBlockerIds } = await unbundleBlockers(ctx, {
-      project: thisTask.project,
-      newTasks: blockers.newTasks,
-      newMiscBlockers: blockers.newMiscBlockers,
-    })
-
-    await ctx.db.patch(id, {
-      blockers: blockers.blockers.map(b => {
-        switch (b.type) {
-          case 'task':
-          case 'time':
-          case 'misc':
-            return b;
-          case 'relTask':
-            return { type: 'task' as const, id: newTaskIds[b.index] };
-          case 'relMisc':
-            return { type: 'misc' as const, id: newBlockerIds[b.index] };
-        }
-      }),
-    });
   },
 });
 

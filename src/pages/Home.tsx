@@ -2,14 +2,13 @@ import { Link } from "react-router-dom";
 import { getProjectUrl } from "../routes";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import moment from "moment";
 import { QuickCaptureForm } from "./QuickCapture";
-import { BlockersForm } from "../BlockersForm";
-import { getOutstandingBlockers, useNow } from "../common";
+import { AutocompletingInput } from "../AutocompletingInput";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -30,22 +29,84 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     </form>
 }
 
+function useNow(intervalMillis: number) {
+    const [now, setNow] = useState(new Date());
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNow(new Date());
+        }, intervalMillis);
+        return () => { clearInterval(interval) };
+    }, [intervalMillis]);
+    return now;
+}
+
+function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
+    task: Doc<'tasks'>,
+    allTasks: List<Doc<'tasks'>>,
+    allMiscBlockers: List<Doc<'miscBlockers'>>,
+}) {
+    const linkBlocker = useMutation(api.tasks.linkBlocker);
+    const createMiscBlocker = useMutation(api.miscBlockers.create);
+
+    const options = useMemo(() => List([
+        ...allTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
+        ...allMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'misc', id: b._id } }) })),
+    ]), [allTasks, allMiscBlockers, linkBlocker, task._id]);
+    const render = useCallback((x: { text: string }) => x.text, []);
+
+    return <AutocompletingInput
+        options={options}
+        render={render}
+        onSubmit={async (val) => {
+            switch (val.type) {
+                case "raw":
+                    await linkBlocker({
+                        id: task._id,
+                        blocker: {
+                            type: 'misc',
+                            id: await createMiscBlocker({ text: val.text }),
+                        },
+                    });
+                    break;
+                case "option":
+                    await val.value.link();
+                    break;
+            }
+        }}
+    />;
+}
+
+function getOutstandingBlockers({ task, tasksById, miscBlockersById, now }: {
+    task: Doc<'tasks'>,
+    tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
+    miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
+    now: Date,
+}): List<Doc<'tasks'>['blockers'][0]> {
+    return List(task.blockers.filter((blocker) => {
+        switch (blocker.type) {
+            case "task":
+                return tasksById.get(blocker.id)!.completedAtMillis === undefined;
+            case "time":
+                return blocker.millis > now.getTime();
+            case "misc":
+                return miscBlockersById.get(blocker.id)!.completedAtMillis === undefined;
+        }
+    }));
+}
+
 function Task({ task, tasksById, miscBlockersById }: {
     task: Doc<'tasks'>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
     miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
 }) {
-    const setBlockers = useMutation(api.tasks.setBlockers);
+    const unlinkBlocker = useMutation(api.tasks.unlinkBlocker);
     const setCompleted = useMutation(api.tasks.setCompleted);
+    const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
 
     const now = useNow(10000);
-    const [showBlockersForm, setShowBlockersForm] = useState(false);
 
-    const outstandingBlockers = useMemo(() => getOutstandingBlockers({ task, tasksById, miscBlockersById, now }), [task, tasksById, miscBlockersById, now]);
+    const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
-
-    const otherTasks = tasksById.remove(task._id);
-
     return <div>
         <input
             type="checkbox"
@@ -58,24 +119,44 @@ function Task({ task, tasksById, miscBlockersById }: {
             {task.text}
         </label>
         {" "}
-        {(blocked || showBlockersForm)
-            ? <div className="ms-4">
-                <BlockersForm
-                    existingTask={task}
-                    allTasks={otherTasks}
-                    allBlockers={miscBlockersById}
-                    onSubmit={async (blockers) => {
-                        await setBlockers({ id: task._id, blockers });
-                        setShowBlockersForm(false);
-                    }}
-                    onCancel={() => { setShowBlockersForm(false) }}
-                />
+        <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
+        {blocked
+            && <div className="ms-4">
+                blocked on:
+                <ul className="list-group">
+                    {outstandingBlockers.map((blocker) => {
+                        const unlinkButton = <button
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => { unlinkBlocker({ id: task._id, blocker }).catch(console.error) }}>-</button>;
+                        switch (blocker.type) {
+                            case "task":
+                                return <li key={blocker.id} className="list-group-item">
+                                    {tasksById.get(blocker.id)!.text}
+                                    {" "} {unlinkButton}
+                                </li>
+                            case "time":
+                                return <li key="__time" className="list-group-item">
+                                    {moment(blocker.millis).fromNow()}
+                                    {" "} {unlinkButton}
+                                </li>
+                            case "misc":
+                                return <li key={blocker.id} className="list-group-item">
+                                    <input
+                                        type="checkbox"
+                                        id={`task-${task._id}--miscBlocker-${blocker.id}`}
+                                        checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined}
+                                        onChange={(e) => { setMiscBlockerCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error) }}
+                                    />
+                                    {" "}
+                                    <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
+                                        {miscBlockersById.get(blocker.id)!.text}
+                                    </label>
+                                    {" "} {unlinkButton}
+                                </li>
+                        }
+                    })}
+                </ul>
             </div>
-            : <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={() => { setShowBlockersForm(true) }}
-                disabled={blocked}
-            >blocked</button>
         }
     </div>
 }
