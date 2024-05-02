@@ -295,11 +295,11 @@ export function Page() {
     }
 
     return <div>
-        <h1>Inbox</h1>
+        <h1 className="text-center">Inbox</h1>
         <Inbox />
 
-        <hr />
 
+        <h1 className="mt-4 text-center">Projects</h1>
         <div className="d-flex flex-row">
             <div className="me-4">
                 <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
@@ -312,7 +312,6 @@ export function Page() {
                 <label htmlFor="showBlocked">Show blocked</label>
             </div>
         </div>
-        <h1>Projects</h1>
         {tasksByProject.entrySeq()
             .sortBy(([p,]) => [p === undefined, p])
             .map(([project, projectTasks]) => (
@@ -327,7 +326,8 @@ export function Page() {
                 />
             ))}
 
-        <h1 className="mt-4"> All misc blockers </h1>
+
+        <h1 className="mt-4 text-center"> All misc blockers </h1>
         <ul className="list-group">
             {blockers
                 .filter(b => showCompleted || b.completedAtMillis === undefined)
