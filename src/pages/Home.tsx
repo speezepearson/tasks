@@ -367,7 +367,7 @@ export function Page() {
 }
 
 function Inbox() {
-    const captures = useQuery(api.captures.list, { limit: 99999999 });
+    const captures = useQuery(api.captures.list, { limit: 10 });
     const archive = useMutation(api.captures.archive);
 
     return <div>
