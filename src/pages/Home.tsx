@@ -264,6 +264,12 @@ export function Page() {
     const [showCompleted, setShowCompleted] = useState(false);
     const [showBlocked, setShowBlocked] = useState(false);
 
+    const nextActions = useMemo(() => {
+        return tasksById && miscBlockersById && tasks
+            ?.sortBy((task) => [task.project === undefined, task.project])
+            ?.filter((task) => task.completedAtMillis === undefined && getOutstandingBlockers({ task, tasksById, miscBlockersById, now }).isEmpty());
+    }, [tasks, tasksById, miscBlockersById, now]);
+
     if (projects === undefined
         || tasks === undefined
         || blockers === undefined
@@ -298,6 +304,23 @@ export function Page() {
         <div>
             <h1 className="text-center">Inbox</h1>
             <Inbox />
+        </div>
+
+        <div className="mt-4">
+            <div className="text-center">
+                <h1>Next Actions</h1>
+            </div>
+            <ul className="list-group">
+                {nextActions
+                    .map((task) => <li key={task._id} className="list-group-item">
+                        <Task
+                            task={task}
+                            tasksById={tasksById}
+                            miscBlockersById={miscBlockersById}
+                        />
+                    </li>)
+                }
+            </ul>
         </div>
 
         <div className="mt-4">
