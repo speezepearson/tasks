@@ -12,6 +12,13 @@ export default defineSchema({
     name: v.string(),
   }),
 
+  captures: defineTable({
+    text: v.string(),
+    archivedAtMillis: v.optional(v.number()),
+  })
+    .index('archivedAtMillis', ['archivedAtMillis'])
+  ,
+
   tasks: defineTable({
     text: v.string(),
     completedAtMillis: v.optional(v.number()),

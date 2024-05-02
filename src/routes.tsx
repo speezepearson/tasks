@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { createBrowserRouter, useLoaderData } from "react-router-dom";
 import { Root } from "./Root";
 import * as Home from "./pages/Home";
+import * as Add from "./pages/QuickCapture";
 import * as Parameterized from "./pages/Project";
 import { Id } from "../convex/_generated/dataModel";
 
@@ -22,6 +23,10 @@ export const router = createBrowserRouter([
             {
                 path: "/",
                 element: <Home.Page />,
+            },
+            {
+                path: "/add",
+                element: <Add.Page />,
             },
             {
                 path: getProjectUrl(':id' as Id<'projects'>),
