@@ -89,6 +89,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
         <input
             ref={inputRef}
             autoFocus
+            className="form-control form-control-sm d-inline-block"
             type="text"
             placeholder="blocker"
             disabled={working}

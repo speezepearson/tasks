@@ -274,21 +274,24 @@ export function Page() {
     }
 
     const showMiscBlocker = (blocker: Doc<'miscBlockers'>) => {
-        return <div>
-            <input
-                type="checkbox"
-                id={`miscBlocker-${blocker._id}`}
-                checked={blocker.completedAtMillis !== undefined}
-                onChange={(e) => { setMiscBlockerCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
-            />
-            {" "}
-            {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
-                <span className="text-danger">TIMED OUT: </span>}
-            <label htmlFor={`miscBlocker-${blocker._id}`}>
-                <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
-                {" "}
-                {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
-            </label>
+        return <div className="d-flex flex-row">
+            <div>
+                <input
+                    type="checkbox"
+                    id={`miscBlocker-${blocker._id}`}
+                    checked={blocker.completedAtMillis !== undefined}
+                    onChange={(e) => { setMiscBlockerCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
+                />
+            </div>
+            <div className="ms-1">
+                <label htmlFor={`miscBlocker-${blocker._id}`}>
+                    {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
+                        <span className="text-danger">TIMED OUT: </span>}
+                    <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
+                    {" "}
+                    {blocker.timeoutMillis !== undefined && <span className="text-muted">(timeout: {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
+                </label>
+            </div>
         </div>
     }
 
@@ -391,7 +394,7 @@ function CreateMiscBlockerForm() {
     }}>
         <div className="d-flex flex-row">
             <input className="form-control form-control-sm d-inline-block" value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new blocker text" />
-            <input className="form-control form-control-sm d-inline-block ms-1" type="date" value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
+            <input className="form-control form-control-sm d-inline-block ms-1" type="date" style={{ maxWidth: '10em' }} value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
             <button className="btn btn-sm btn-primary ms-1" type="submit">+blocker</button>
         </div>
     </form>
