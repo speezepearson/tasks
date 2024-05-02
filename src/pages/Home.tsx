@@ -301,17 +301,19 @@ export function Page() {
         </div>
 
         <div className="mt-4">
-            <h1 className="text-center">Projects</h1>
-            <div className="d-flex flex-row">
-                <div className="me-4">
-                    <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
-                    {" "}
-                    <label htmlFor="showCompleted">Show completed</label>
-                </div>
-                <div className="me-4">
-                    <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => { setShowBlocked(e.target.checked) }} />
-                    {" "}
-                    <label htmlFor="showBlocked">Show blocked</label>
+            <div className="text-center">
+                <h1>Projects</h1>
+                <div>
+                    <div className="me-4">
+                        <input type="checkbox" id="showCompleted" checked={showCompleted} onChange={(e) => { setShowCompleted(e.target.checked) }} />
+                        {" "}
+                        <label htmlFor="showCompleted">Show completed</label>
+                    </div>
+                    <div className="me-4">
+                        <input type="checkbox" id="showBlocked" checked={showBlocked} onChange={(e) => { setShowBlocked(e.target.checked) }} />
+                        {" "}
+                        <label htmlFor="showBlocked">Show blocked</label>
+                    </div>
                 </div>
             </div>
             {tasksByProject.entrySeq()
