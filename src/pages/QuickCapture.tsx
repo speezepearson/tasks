@@ -16,6 +16,7 @@ export function QuickCaptureForm() {
         })().catch(console.error).finally(() => { setWorking(false) });
     }}>
         <input
+            autoFocus
             disabled={working}
             value={text}
             onChange={(e) => { setText(e.target.value) }}
