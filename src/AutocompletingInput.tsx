@@ -10,12 +10,13 @@ function textMatches(text: string, query: string): boolean {
     return true;
 }
 
-export function AutocompletingInput<T>({ options, render, onSubmit }: {
+export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: {
     options: List<T>,
     render: (x: T) => string,
     onSubmit: (x: { type: "raw", text: string } | { type: "option", value: T }) => Promise<unknown>,
+    onCancel: () => void,
 }) {
-    const [field, setField] = useState<null | string>(null);
+    const [field, setField] = useState("");
     const [working, setWorking] = useState(false);
 
     const renderedOptions = useMemo(() => options.map(x => [x, render(x)] as const), [options, render]);
@@ -46,7 +47,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit }: {
                     console.error("No match found for selected index", selectedIndex);
                 }
             }
-            setField(null);
+            setField("");
             setSelectedIndex(null);
         } finally {
             setWorking(false);
@@ -59,80 +60,79 @@ export function AutocompletingInput<T>({ options, render, onSubmit }: {
         setSelectedIndex(selectedIndex === null ? matches.size - 1 : selectedIndex <= 0 ? null : selectedIndex - 1);
     }
 
-    return field === null
-        ? <button className="btn btn-sm btn-outline-secondary" onClick={() => { setField("") }}>+blocker</button>
-        : <div className="d-inline-block">
-            <div ref={completionsRef} style={{
-                top: '-9999px',
-                left: '-9999px',
-                position: 'absolute',
-                zIndex: 1,
-                padding: '3px',
-                background: 'white',
-                borderRadius: '4px',
-                boxShadow: '0 1px 5px rgba(0,0,0,.2)',
-                visibility: (focused || popoverHasMouse) && !matches.isEmpty() ? 'visible' : 'hidden',
-            }}
-                onMouseEnter={() => { setPopoverHasMouse(true) }}
-                onMouseLeave={() => { setPopoverHasMouse(false) }}
-            >
-                <small className="text-muted">Select with &uarr;/&darr;, (Shift+)Tab; confirm with &#x23ce;</small>
-                <ul className="list-group">
-                    {matches.map(([, text], i) => <li key={i} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
-                        onMouseEnter={() => { setSelectedIndex(i) }}
-                        onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
-                        onClick={() => { submit(i).catch(console.error) }}
-                    >
-                        {text}
-                    </li>)}
-                </ul>
-            </div>
-            <input
-                ref={inputRef}
-                autoFocus
-                type="text"
-                placeholder="blocker"
-                disabled={working}
-                value={field}
-                onChange={(e) => {
-                    setField(e.target.value);
-                    if (completionsRef.current && inputRef.current) {
-                        completionsRef.current.style.top = `${inputRef.current.offsetTop + inputRef.current.offsetHeight}px`;
-                        completionsRef.current.style.left = `${inputRef.current.offsetLeft}px`;
-                    }
-                }}
-                onFocus={() => { setFocused(true) }}
-                onBlur={() => { setFocused(false) }}
-                onKeyDown={(e) => {
-                    if (working) return;
-                    switch (e.key) {
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            goDown();
-                            break;
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            goUp();
-                            break;
-                        case 'Tab':
-                            e.preventDefault();
-                            if (e.shiftKey) {
-                                goUp();
-                            } else {
-                                goDown();
-                            }
-                            break;
-
-                        case "Enter":
-                            setWorking(true);
-                            submit(selectedIndex).catch(console.error);
-                            break;
-                        case "Escape":
-                            setField(null);
-                            break;
-
-                    }
-                }}
-            />
+    return <div className="d-inline-block">
+        <div ref={completionsRef} style={{
+            top: '-9999px',
+            left: '-9999px',
+            position: 'absolute',
+            zIndex: 1,
+            padding: '3px',
+            background: 'white',
+            borderRadius: '4px',
+            boxShadow: '0 1px 5px rgba(0,0,0,.2)',
+            visibility: (focused || popoverHasMouse) && !matches.isEmpty() ? 'visible' : 'hidden',
+        }}
+            onMouseEnter={() => { setPopoverHasMouse(true) }}
+            onMouseLeave={() => { setPopoverHasMouse(false) }}
+        >
+            <small className="text-muted">Select with &uarr;/&darr;, (Shift+)Tab; confirm with &#x23ce;</small>
+            <ul className="list-group">
+                {matches.map(([, text], i) => <li key={i} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
+                    onMouseEnter={() => { setSelectedIndex(i) }}
+                    onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
+                    onClick={() => { submit(i).catch(console.error) }}
+                >
+                    {text}
+                </li>)}
+            </ul>
         </div>
+        <input
+            ref={inputRef}
+            autoFocus
+            type="text"
+            placeholder="blocker"
+            disabled={working}
+            value={field}
+            onChange={(e) => {
+                setField(e.target.value);
+                if (completionsRef.current && inputRef.current) {
+                    completionsRef.current.style.top = `${inputRef.current.offsetTop + inputRef.current.offsetHeight}px`;
+                    completionsRef.current.style.left = `${inputRef.current.offsetLeft}px`;
+                }
+            }}
+            onFocus={() => { setFocused(true) }}
+            onBlur={() => { setFocused(false) }}
+            onKeyDown={(e) => {
+                if (working) return;
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        goDown();
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        goUp();
+                        break;
+                    case 'Tab':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            goUp();
+                        } else {
+                            goDown();
+                        }
+                        break;
+
+                    case "Enter":
+                        setWorking(true);
+                        submit(selectedIndex).catch(console.error);
+                        break;
+                    case "Escape":
+                        setField("");
+                        onCancel();
+                        break;
+
+                }
+            }}
+        />
+    </div>
 }

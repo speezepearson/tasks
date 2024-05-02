@@ -67,26 +67,31 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
     ]), [allTasks, allMiscBlockers, linkBlocker, task._id]);
     const render = useCallback((x: { text: string }) => x.text, []);
 
-    return <AutocompletingInput
-        options={options}
-        render={render}
-        onSubmit={async (val) => {
-            switch (val.type) {
-                case "raw":
-                    await linkBlocker({
-                        id: task._id,
-                        blocker: {
-                            type: 'misc',
-                            id: await createMiscBlocker({ text: val.text }),
-                        },
-                    });
-                    break;
-                case "option":
-                    await val.value.link();
-                    break;
-            }
-        }}
-    />;
+    const [showInput, setShowInput] = useState(false);
+
+    return showInput
+        ? <AutocompletingInput
+            options={options}
+            render={render}
+            onSubmit={async (val) => {
+                switch (val.type) {
+                    case "raw":
+                        await linkBlocker({
+                            id: task._id,
+                            blocker: {
+                                type: 'misc',
+                                id: await createMiscBlocker({ text: val.text }),
+                            },
+                        });
+                        break;
+                    case "option":
+                        await val.value.link();
+                        break;
+                }
+            }}
+            onCancel={() => { setShowInput(false) }}
+        />
+        : <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setShowInput(true) }}>+blocker</button>;
 }
 
 function getOutstandingBlockers({ task, tasksById, miscBlockersById, now }: {
