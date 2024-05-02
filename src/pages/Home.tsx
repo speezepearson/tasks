@@ -60,6 +60,7 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
     const completionsRef = useRef<HTMLDivElement>(null);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
     const [focused, setFocused] = useState(false);
+    const [popoverHasMouse, setPopoverHasMouse] = useState(false);
 
     const matchingTasks = useMemo(() => {
         return field && field.length > 1 ? allTasks.filter((task) => textMatches(task.text, field)) : allTasks.take(0);
@@ -110,8 +111,12 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
                 background: 'white',
                 borderRadius: '4px',
                 boxShadow: '0 1px 5px rgba(0,0,0,.2)',
-                visibility: focused && !matches.isEmpty() ? 'visible' : 'hidden',
-            }}>
+                visibility: (focused || popoverHasMouse) && !matches.isEmpty() ? 'visible' : 'hidden',
+            }}
+                onMouseEnter={() => { setPopoverHasMouse(true) }}
+                onMouseLeave={() => { setPopoverHasMouse(false) }}
+            >
+                <small className="text-muted">Select with &uarr;/&darr;, (Shift+)Tab; confirm with &#x23ce;</small>
                 <ul className="list-group">
                     {matches.map((m, i) => <li key={m.id} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
                         onMouseEnter={() => { setSelectedIndex(i) }}
