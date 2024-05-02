@@ -277,6 +277,7 @@ export function Page() {
         || tasksByProject === undefined
         || tasksById === undefined
         || miscBlockersById === undefined
+        || nextActions === undefined
     ) {
         return <div>Loading...</div>
     }
