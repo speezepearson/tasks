@@ -202,7 +202,7 @@ function ProjectCard({
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime]);
 
-    return <details open className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
+    return <details open={!projectTasks.isEmpty()} className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
         <summary>
             <div className="fs-5 d-inline-block">
                 {project === undefined
