@@ -216,6 +216,7 @@ function ProjectCard({
             }
         </h3>
         <ul className="list-group">
+            <li className="list-group-item"><CreateTaskForm project={project} /></li>
             {showTasks
                 .map((task) => <li key={task._id} className="list-group-item">
                     <Task
@@ -242,7 +243,6 @@ function ProjectCard({
                     </ul>
                 </details>
             </li>}
-            <li className="list-group-item"><CreateTaskForm project={project} /></li>
         </ul>
     </div>
 
