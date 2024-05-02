@@ -62,6 +62,9 @@ export const linkBlocker = mutation({
     if (task === null) {
       throw new Error('Task not found');
     }
+    if (task.blockers.some((b) => blockersEqual(b, blocker))) {
+      throw new Error('Blocker already linked');
+    }
     await ctx.db.patch(id, { blockers: [...task.blockers, blocker] });
   },
 });
