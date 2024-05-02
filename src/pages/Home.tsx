@@ -2,12 +2,13 @@ import { Link } from "react-router-dom";
 import { getProjectUrl } from "../routes";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import moment from "moment";
 import { QuickCaptureForm } from "./QuickCapture";
+import { AutocompletingInput } from "../AutocompletingInput";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -39,13 +40,6 @@ function useNow(intervalMillis: number) {
     return now;
 }
 
-function textMatches(text: string, query: string): boolean {
-    for (const word of query.split(/\s+/)) {
-        if (!text.toLowerCase().includes(word.toLowerCase())) return false;
-    }
-    return true;
-}
-
 function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
     task: Doc<'tasks'>,
     allTasks: List<Doc<'tasks'>>,
@@ -53,129 +47,33 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
 }) {
     const linkBlocker = useMutation(api.tasks.linkBlocker);
     const createMiscBlocker = useMutation(api.miscBlockers.create);
-    const [field, setField] = useState<null | string>(null);
-    const [working, setWorking] = useState(false);
 
-    const inputRef = useRef<HTMLInputElement>(null);
-    const completionsRef = useRef<HTMLDivElement>(null);
-    const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-    const [focused, setFocused] = useState(false);
-    const [popoverHasMouse, setPopoverHasMouse] = useState(false);
+    const options = useMemo(() => List([
+        ...allTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
+        ...allMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'misc', id: b._id } }) })),
+    ]), [allTasks, allMiscBlockers, linkBlocker, task._id]);
+    const render = useCallback((x: { text: string }) => x.text, []);
 
-    const matchingTasks = useMemo(() => {
-        return field && field.length > 1 ? allTasks.filter((task) => textMatches(task.text, field)) : allTasks.take(0);
-    }, [allTasks, field]);
-    const matchingMiscBlockers = useMemo(() => {
-        return field && field.length > 1 ? allMiscBlockers.filter((blocker) => textMatches(blocker.text, field)) : allMiscBlockers.take(0);
-    }, [allMiscBlockers, field]);
-    const matches = useMemo(() => {
-        return List([
-            ...matchingTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
-            ...matchingMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'misc', id: b._id } }) })),
-        ]);
-    }, [matchingTasks, matchingMiscBlockers, task, linkBlocker]);
-
-    const submit = async (selectedIndex: number | null) => {
-        console.log("submit", selectedIndex, field, working);
-        if (field === null) return;
-        if (working) return;
-        if (selectedIndex === null) {
-            const id = await createMiscBlocker({ text: field })
-            await linkBlocker({ id: task._id, blocker: { type: 'misc', id } });
-        } else {
-            const match = matches.get(selectedIndex);
-            if (match !== undefined) {
-                await match.link();
-            } else {
-                console.error("No match found for selected index", selectedIndex);
+    return <AutocompletingInput
+        options={options}
+        render={render}
+        onSubmit={async (val) => {
+            switch (val.type) {
+                case "raw":
+                    await linkBlocker({
+                        id: task._id,
+                        blocker: {
+                            type: 'misc',
+                            id: await createMiscBlocker({ text: val.text }),
+                        },
+                    });
+                    break;
+                case "option":
+                    await val.value.link();
+                    break;
             }
-        }
-        setField(null);
-        setSelectedIndex(null);
-    }
-    const goDown = () => {
-        setSelectedIndex(selectedIndex === null ? 0 : selectedIndex >= matches.size - 1 ? null : selectedIndex + 1);
-    }
-    const goUp = () => {
-        setSelectedIndex(selectedIndex === null ? matches.size - 1 : selectedIndex <= 0 ? null : selectedIndex - 1);
-    }
-
-    return field === null
-        ? <button className="btn btn-sm btn-outline-secondary" onClick={() => { setField("") }}>+blocker</button>
-        : <div className="d-inline-block">
-            <div ref={completionsRef} style={{
-                top: '-9999px',
-                left: '-9999px',
-                position: 'absolute',
-                zIndex: 1,
-                padding: '3px',
-                background: 'white',
-                borderRadius: '4px',
-                boxShadow: '0 1px 5px rgba(0,0,0,.2)',
-                visibility: (focused || popoverHasMouse) && !matches.isEmpty() ? 'visible' : 'hidden',
-            }}
-                onMouseEnter={() => { setPopoverHasMouse(true) }}
-                onMouseLeave={() => { setPopoverHasMouse(false) }}
-            >
-                <small className="text-muted">Select with &uarr;/&darr;, (Shift+)Tab; confirm with &#x23ce;</small>
-                <ul className="list-group">
-                    {matches.map((m, i) => <li key={m.id} className={`list-group-item ${i === selectedIndex ? 'active' : ''}`}
-                        onMouseEnter={() => { setSelectedIndex(i) }}
-                        onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
-                        onClick={() => { submit(i).catch(console.error) }}
-                    >
-                        {m.text}
-                    </li>)}
-                </ul>
-            </div>
-            <input
-                ref={inputRef}
-                autoFocus
-                type="text"
-                placeholder="blocker"
-                disabled={working}
-                value={field}
-                onChange={(e) => {
-                    setField(e.target.value);
-                    if (completionsRef.current && inputRef.current) {
-                        completionsRef.current.style.top = `${inputRef.current.offsetTop + inputRef.current.offsetHeight}px`;
-                        completionsRef.current.style.left = `${inputRef.current.offsetLeft}px`;
-                    }
-                }}
-                onFocus={() => { setFocused(true) }}
-                onBlur={() => { setFocused(false) }}
-                onKeyDown={(e) => {
-                    if (working) return;
-                    switch (e.key) {
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            goDown();
-                            break;
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            goUp();
-                            break;
-                        case 'Tab':
-                            e.preventDefault();
-                            if (e.shiftKey) {
-                                goUp();
-                            } else {
-                                goDown();
-                            }
-                            break;
-
-                        case "Enter":
-                            setWorking(true);
-                            submit(selectedIndex).catch(console.error);
-                            break;
-                        case "Escape":
-                            setField(null);
-                            break;
-
-                    }
-                }}
-            />
-        </div>
+        }}
+    />;
 }
 
 function getOutstandingBlockers({ task, tasksById, miscBlockersById, now }: {
