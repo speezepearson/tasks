@@ -202,13 +202,15 @@ function ProjectCard({
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime]);
 
-    return <div className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
-        <div className="fs-5" >
-            {project === undefined
-                ? "(misc)"
-                : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState} className="text-decoration-none">{project.name}</Link>
-            }
-        </div>
+    return <details open className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
+        <summary>
+            <div className="fs-5 d-inline-block">
+                {project === undefined
+                    ? "(misc)"
+                    : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState} className="text-decoration-none">{project.name}</Link>
+                }
+            </div>
+        </summary>
         <div className="ms-4">
             <div className="py-1"><CreateTaskForm project={project} /></div>
             {showTasks.map((task) =>
@@ -221,7 +223,7 @@ function ProjectCard({
                 </div>
             )}
         </div>
-    </div>;
+    </details>;
 }
 
 export function Page() {
