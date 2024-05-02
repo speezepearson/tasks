@@ -6,12 +6,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import moment from "moment";
+// import moment from "moment";
 import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
 import Markdown from "react-markdown";
 import { useNow } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
+
+function moment(x: number) {
+    return { fromNow: () => x.toString() }
+}
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);

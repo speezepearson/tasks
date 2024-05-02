@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { createBrowserRouter, useLoaderData } from "react-router-dom";
+import { createHashRouter, useLoaderData } from "react-router-dom";
 import { Root } from "./Root";
 import * as Home from "./pages/Home";
 import * as Add from "./pages/QuickCapture";
@@ -15,7 +15,7 @@ export function getProjectUrl(id: Id<'projects'>) {
     return `/project/${id}`;
 }
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
     {
         path: "/",
         element: <Root />,

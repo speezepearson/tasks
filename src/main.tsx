@@ -8,9 +8,11 @@ import { router } from './routes.tsx'
 import './main.css';
 import { TickProvider } from './common.tsx';
 
+console.log("SRP: hi");
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+console.log({ convex });
 
-ReactDOM.createRoot(document.getElementById('root')!).render( // eslint-disable-line @typescript-eslint/no-non-null-assertion
+ReactDOM.createRoot(document.getElementById('tasks-root')!).render( // eslint-disable-line @typescript-eslint/no-non-null-assertion
   <React.StrictMode>
     <ConvexProvider client={convex}>
       <TickProvider>
