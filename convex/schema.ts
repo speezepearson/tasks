@@ -6,6 +6,21 @@ export const vBlocker = v.union(
   v.object({ type: v.literal('time'), millis: v.number() }),
   v.object({ type: v.literal('misc'), id: v.id('miscBlockers') }),
 );
+export const vPendingBlocker = v.union(
+  vBlocker,
+  v.object({ type: v.literal('relTask'), index: v.number() }),
+  v.object({ type: v.literal('relMisc'), index: v.number() }),
+);
+export const vPendingTaskSpec = v.object({
+  project: v.optional(v.id('projects')),
+  text: v.string(),
+  blockers: v.array(vPendingBlocker),
+});
+export const vPendingMiscBlockerSpec = v.object({
+  text: v.string(),
+  timeoutMillis: v.optional(v.number()),
+});
+
 
 export default defineSchema({
   projects: defineTable({
