@@ -119,6 +119,9 @@ function Task({ task, tasksById, miscBlockersById }: {
     const [editField, setEditField] = useState<string | null>(null);
 
     const now = useNow();
+    const [working, setWorking] = useState(false);
+
+    const uid = useMemo(() => Math.random(), []);
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
@@ -127,14 +130,20 @@ function Task({ task, tasksById, miscBlockersById }: {
             <input
                 className="align-self-start mt-1"
                 type="checkbox"
-                id={`task-${task._id}`}
+                id={`${uid}-task-${task._id}`}
                 checked={task.completedAtMillis !== undefined}
-                onChange={(e) => { setCompleted({ id: task._id, isCompleted: e.target.checked }).catch(console.error) }}
-                disabled={blocked && task.completedAtMillis === undefined} />
+                onChange={(e) => {
+                    if (working) return;
+                    setWorking(true);
+                    console.log('working now');
+                    setCompleted({ id: task._id, isCompleted: e.target.checked })
+                        .catch(console.error).finally(() => { setWorking(false) });
+                }}
+                disabled={working || (blocked && task.completedAtMillis === undefined)} />
             {" "}
             {editField === null
                 ? <label
-                    htmlFor={`task-${task._id}`}
+                    htmlFor={`${uid}-task-${task._id}`}
                     className={`ms-1 overflow-hidden text-truncate ${blocked ? "text-muted" : ""}`}
                     style={{}}>
                     <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
@@ -148,9 +157,10 @@ function Task({ task, tasksById, miscBlockersById }: {
                         switch (e.key) {
                             case "Enter":
                                 e.preventDefault();
-                                (async () => {
-                                    await reword({ id: task._id, text: editField }).catch(console.error);
-                                })().catch(console.error);
+                                if (working) return;
+                                setWorking(true);
+                                reword({ id: task._id, text: editField })
+                                    .catch(console.error).finally(() => { setWorking(false) });
                                 setEditField(null);
                                 break;
                             case "Escape":
