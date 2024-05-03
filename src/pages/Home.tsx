@@ -330,10 +330,20 @@ export function Page() {
         </div>
     }
 
+    const timedOutBlockers = blockers.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime());
+
     return <div>
         <div>
             <h1 className="text-center">Inbox</h1>
             <Inbox />
+        </div>
+
+        <div className="mt-4">
+            <h1 className="text-center"> Timed Out </h1>
+            <ul className="list-group">
+                {timedOutBlockers
+                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
+            </ul>
         </div>
 
         <div className="mt-4">
