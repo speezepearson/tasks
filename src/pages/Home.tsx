@@ -1,17 +1,15 @@
-import { Link } from "react-router-dom";
-import { getProjectUrl } from "../routes";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as Project from "./Project";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
-import { textMatches, useNow } from "../common";
+import { ReqStatus, textMatches, useNow, watchReqStatus } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
 import { formatDate, parseISO } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
+import { Button, Form, Modal } from "react-bootstrap";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -51,7 +49,6 @@ function guessTimeoutMillisFromText(text: string): { withoutDate: string; timeou
     const regexp = /(\d{4}-\d{2}-\d{2})$/;
     const dateMatch = text.match(regexp);
     if (dateMatch === null) return undefined;
-    console.log({ text, dateMatch, res: parseISO(dateMatch[1]).getTime() });
     return {
         withoutDate: text.replace(regexp, ''),
         timeout: parseISO(dateMatch[1]),
@@ -122,8 +119,70 @@ function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
     }));
 }
 
-function Task({ task, tasksById, delegationsById: delegationsById }: {
+function EditTaskModal({ task, projectsById, onHide }: {
     task: Doc<'tasks'>,
+    projectsById: Map<Id<'projects'>, Doc<'projects'>>,
+    onHide: () => unknown,
+}) {
+    const update = useMutation(api.tasks.update);
+
+    const [newText, setNewText] = useState(task.text);
+    const [newProjectId, setNewProjectId] = useState(task.project);
+
+    const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
+
+    const doSave = () => { watchReqStatus(setSaveReq, update({ id: task._id, text: newText, project: newProjectId }).then(onHide)).catch(console.error) }
+
+    return <Modal show onHide={onHide}>
+        <Modal.Header closeButton>
+            <Modal.Title>Edit task</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+            <Form onSubmit={e => { e.preventDefault(); doSave() }}>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Task text</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="text"
+                        value={newText}
+                        onChange={(e) => { setNewText(e.target.value) }}
+                    />
+                    <Form.Text className="text-muted">
+                        You can use markdown here.
+                    </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Project</Form.Label>
+                    <Form.Select
+                        value={newProjectId}
+                        onChange={(e) => { setNewProjectId(e.target.value === '' ? undefined : (e.target.value as Id<'projects'>)) }}
+                    >
+                        <option value="">(none)</option>
+                        {projectsById.entrySeq()
+                            .sortBy(([, project]) => project.name)
+                            .map(([id, project]) => <option key={id} value={id}>{project.name}</option>)}
+                    </Form.Select>
+                </Form.Group>
+
+            </Form>
+            {saveReq.type === "error" && <div className="alert alert-danger">{saveReq.message}</div>}
+        </Modal.Body>
+        <Modal.Footer>
+            <Button variant="outline-secondary" onClick={onHide}>
+                Close
+            </Button>
+            <Button variant="primary" onClick={doSave}>
+                {saveReq.type === 'working' ? 'Saving...' : 'Save'}
+            </Button>
+        </Modal.Footer>
+    </Modal>
+}
+
+function Task({ task, projectsById, tasksById, delegationsById: delegationsById }: {
+    task: Doc<'tasks'>,
+    projectsById: Map<Id<'projects'>, Doc<'projects'>>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
 }) {
@@ -131,8 +190,7 @@ function Task({ task, tasksById, delegationsById: delegationsById }: {
     const setCompleted = useMutation(api.tasks.setCompleted);
     const setDelegationCompleted = useMutation(api.delegations.setCompleted);
 
-    const reword = useMutation(api.tasks.reword);
-    const [editField, setEditField] = useState<string | null>(null);
+    const [editing, setEditing] = useState(false);
 
     const now = useNow();
     const [working, setWorking] = useState(false);
@@ -140,6 +198,11 @@ function Task({ task, tasksById, delegationsById: delegationsById }: {
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
     const blocked = outstandingBlockers.size > 0;
     return <div>
+        {editing && <EditTaskModal
+            task={task}
+            projectsById={projectsById}
+            onHide={() => { setEditing(false) }}
+        />}
         <div className="d-flex flex-row">
             <input
                 className="align-self-start mt-1"
@@ -148,44 +211,19 @@ function Task({ task, tasksById, delegationsById: delegationsById }: {
                 onChange={(e) => {
                     if (working) return;
                     setWorking(true);
-                    console.log('working now');
                     setCompleted({ id: task._id, isCompleted: e.target.checked })
                         .catch(console.error).finally(() => { setWorking(false) });
                 }}
                 style={{ width: '1em', height: '1em' }}
                 disabled={working || (blocked && task.completedAtMillis === undefined)} />
             {" "}
-            {editField === null
-                ? <span className={`ms-1 overflow-hidden text-truncate ${blocked ? "text-muted" : ""}`} >
-                    <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
-                </span>
-                : <input
-                    type="text"
-                    className="form-control form-control-sm ms-1"
-                    value={editField}
-                    onChange={(e) => { setEditField(e.target.value) }}
-                    onKeyDown={(e) => {
-                        switch (e.key) {
-                            case "Enter":
-                                e.preventDefault();
-                                if (working) return;
-                                setWorking(true);
-                                reword({ id: task._id, text: editField })
-                                    .catch(console.error).finally(() => { setWorking(false) });
-                                setEditField(null);
-                                break;
-                            case "Escape":
-                                e.preventDefault();
-                                setEditField(null);
-                                break;
-                        }
-                    }}
-                    autoFocus
-                />}
-            <div className="ms-auto"></div>
-            <div className="align-self-start">
-                <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setEditField(task.text) }}>edit</button>
+            <div className={`ms-1 overflow-hidden text-truncate flex-grow-1 ${blocked ? "text-muted" : ""}`}
+                role="button"
+                onClick={() => { setEditing(true) }}
+            >
+                <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
             </div>
+            <div className="ms-auto"></div>
             <div className="align-self-start">
                 <AddBlockerForm task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />
             </div>
@@ -240,35 +278,100 @@ function byUniqueKey<T, K>(items: List<T>, key: (item: T) => K): Map<K, T> {
     return map;
 }
 
+function EditProjectModal({ project, onHide }: {
+    project: Doc<'projects'>,
+    onHide: () => unknown,
+}) {
+    const update = useMutation(api.projects.update);
+
+    const [newName, setNewName] = useState(project.name);
+    const [newColor, setNewColor] = useState(project.color);
+
+    const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
+
+    const doSave = () => { watchReqStatus(setSaveReq, update({ id: project._id, name: newName, color: newColor }).then(onHide)).catch(console.error) }
+
+    return <Modal show onHide={onHide}>
+        <Modal.Header closeButton>
+            <Modal.Title>Edit project</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ backgroundColor: newColor }}>
+            <Form onSubmit={e => { e.preventDefault(); doSave() }}>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Project name</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="text"
+                        value={newName}
+                        onChange={(e) => { setNewName(e.target.value) }}
+                    />
+                    <Form.Text className="text-muted">
+                        You can use markdown here.
+                    </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Color</Form.Label>
+                    <Form.Control
+                        type="color"
+                        value={newColor}
+                        onChange={(e) => { setNewColor(e.target.value) }}
+                    />
+                </Form.Group>
+
+            </Form>
+            {saveReq.type === "error" && <div className="alert alert-danger">{saveReq.message}</div>}
+        </Modal.Body>
+        <Modal.Footer>
+            <Button variant="outline-secondary" onClick={onHide}>
+                Close
+            </Button>
+            <Button variant="primary" onClick={doSave}>
+                {saveReq.type === 'working' ? 'Saving...' : 'Save'}
+            </Button>
+        </Modal.Footer>
+    </Modal>
+}
+
 function ProjectCard({
     project,
     projectTasks,
+    projectsById,
     tasksById,
     delegationsById,
 }: {
     project: Doc<'projects'> | undefined,
     projectTasks: List<Doc<'tasks'>>,
+    projectsById: Map<Id<'projects'>, Doc<'projects'>>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
 }) {
+
+    const [editing, setEditing] = useState(false);
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime]);
 
     return <details open={!projectTasks.isEmpty()} className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
         <summary>
-            <div className="fs-5 d-inline-block">
+            <div className="fs-5 d-inline-block" role="button" onClick={(e) => { e.preventDefault(); setEditing(true) }}>
                 {project === undefined
                     ? "(misc)"
-                    : <Link to={getProjectUrl(project._id)} state={{ project } as Project.LinkState} className="text-decoration-none">{project.name}</Link>
+                    : project.name
                 }
             </div>
         </summary>
+        {editing && <EditProjectModal
+            project={project!}
+            onHide={() => { setEditing(false) }}
+        />}
         <div className="ms-4">
             <div className="py-1"><CreateTaskForm project={project} /></div>
             {showTasks.map((task) =>
                 <div key={task._id} className="" >
                     <Task
                         task={task}
+                        projectsById={projectsById}
                         tasksById={tasksById}
                         delegationsById={delegationsById}
                     />
@@ -282,7 +385,6 @@ export function Page() {
     const projects = mapundef(useQuery(api.projects.list), List);
     const tasks = mapundef(useQuery(api.tasks.list), List);
     const blockers = mapundef(useQuery(api.delegations.list), List);
-    const setDelegationCompleted = useMutation(api.delegations.setCompleted);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
     const tasksByProject = useMemo(() => {
@@ -327,26 +429,6 @@ export function Page() {
         return <div>Loading...</div>
     }
 
-    const showDelegation = (blocker: Doc<'delegations'>) => {
-        return <div className="d-flex flex-row">
-            <div>
-                <input
-                    type="checkbox"
-                    checked={blocker.completedAtMillis !== undefined}
-                    onChange={(e) => { setDelegationCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
-                    style={{ width: '1em', height: '1em' }}
-                />
-            </div>
-            <div className="ms-1">
-                {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
-                    <span className="text-danger">TIMED OUT: </span>}
-                <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
-                {" "}
-                {blocker.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
-            </div>
-        </div>
-    }
-
     const timedOutBlockers = blockers.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime());
 
     return <div>
@@ -359,7 +441,9 @@ export function Page() {
             <h1 className="text-center"> Timed Out </h1>
             <ul className="list-group">
                 {timedOutBlockers
-                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showDelegation(blocker)}</li>)}
+                    .map((blocker) => <li key={blocker._id} className="list-group-item">
+                        <Delegation delegation={blocker} />
+                    </li>)}
             </ul>
         </div>
 
@@ -386,6 +470,7 @@ export function Page() {
                                 outstandingBlockers.get(task._id)!.isEmpty() &&
                                 textMatches(task.text, nextActionFilterField)
                             )}
+                            projectsById={projectsById}
                             tasksById={tasksById}
                             delegationsById={delegationsById}
                         />
@@ -404,6 +489,7 @@ export function Page() {
                         key={project?._id ?? "<undef>"}
                         project={project}
                         projectTasks={projectTasks}
+                        projectsById={projectsById}
                         tasksById={tasksById}
                         delegationsById={delegationsById}
                     />
@@ -415,14 +501,104 @@ export function Page() {
 
         <div className="mt-4">
             <h1 className="text-center"> Delegations </h1>
-            <ul className="list-group">
-                {blockers
-                    .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
-                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showDelegation(blocker)}</li>)}
-                <li className="list-group-item">
-                    <CreateDelegationForm />
-                </li>
-            </ul>
+            <div className="card p-2">
+                <div className="ms-4">
+                    {blockers
+                        .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
+                        .map((blocker) => <div key={blocker._id}>
+                            <Delegation delegation={blocker} />
+                        </div>)}
+                    <div>
+                        <CreateDelegationForm />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+function EditDelegationModal({ delegation, onHide }: {
+    delegation: Doc<'delegations'>,
+    onHide: () => unknown,
+}) {
+    const update = useMutation(api.delegations.update);
+
+    const [newText, setNewText] = useState(delegation.text);
+    const [newTimeoutMillis, setNewTimeoutMillis] = useState(delegation.timeoutMillis);
+
+    const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
+
+    const doSave = () => { watchReqStatus(setSaveReq, update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis }).then(onHide)).catch(console.error) }
+
+    return <Modal show onHide={onHide}>
+        <Modal.Header closeButton>
+            <Modal.Title>Edit delegation</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+            <Form onSubmit={e => { console.log('submitting'); e.preventDefault(); doSave() }}>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Text</Form.Label>
+                    <Form.Control
+                        autoFocus
+                        type="text"
+                        value={newText}
+                        onChange={(e) => { setNewText(e.target.value) }}
+                    />
+                    <Form.Text className="text-muted">
+                        You can use markdown here.
+                    </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Timeout</Form.Label>
+                    <Form.Control
+                        type="date"
+                        value={newTimeoutMillis === undefined ? '' : formatDate(new Date(newTimeoutMillis), 'yyyy-MM-dd')}
+                        onChange={(e) => { setNewTimeoutMillis(e.target.value === '' ? undefined : parseISO(e.target.value).getTime()) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); doSave() } }} // not sure why this is necessary, as opposed to it triggering a Submit naturally
+                    />
+                </Form.Group>
+
+            </Form>
+            {saveReq.type === "error" && <div className="alert alert-danger">{saveReq.message}</div>}
+        </Modal.Body>
+        <Modal.Footer>
+            <Button variant="outline-secondary" onClick={onHide}>
+                Close
+            </Button>
+            <Button variant="primary" onClick={doSave}>
+                {saveReq.type === 'working' ? 'Saving...' : 'Save'}
+            </Button>
+        </Modal.Footer>
+    </Modal>
+}
+
+function Delegation({ delegation }: { delegation: Doc<'delegations'> }) {
+    const setCompleted = useMutation(api.delegations.setCompleted);
+    const now = useNow();
+
+    const [editing, setEditing] = useState(false);
+
+    return <div className="d-flex flex-row">
+        {editing && <EditDelegationModal
+            delegation={delegation}
+            onHide={() => { setEditing(false) }}
+        />}
+        <div>
+            <input
+                type="checkbox"
+                checked={delegation.completedAtMillis !== undefined}
+                onChange={(e) => { setCompleted({ id: delegation._id, isCompleted: e.target.checked }).catch(console.error) }}
+                style={{ width: '1em', height: '1em' }}
+            />
+        </div>
+        <div className="ms-1 flex-grow-1" role="button" onClick={() => { setEditing(true) }}>
+            {delegation.completedAtMillis === undefined && delegation.timeoutMillis && delegation.timeoutMillis < now.getTime() &&
+                <span className="text-danger">TIMED OUT: </span>}
+            <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
+            {" "}
+            {delegation.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</span>}
         </div>
     </div>
 }

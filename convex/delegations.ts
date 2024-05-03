@@ -11,6 +11,17 @@ export const create = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id: v.id("delegations"),
+    text: v.string(),
+    timeoutMillis: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, text, timeoutMillis }) => {
+    await ctx.db.patch(id, { text, timeoutMillis });
+  },
+});
+
 export const get = query({
   args: { id: v.id("delegations") },
   handler: async (ctx, args) => {

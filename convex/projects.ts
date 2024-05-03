@@ -11,6 +11,17 @@ export const create = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id: v.id("projects"),
+    name: v.string(),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, name, color }) => {
+    await ctx.db.patch(id, { name, color });
+  },
+});
+
 export const get = query({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {

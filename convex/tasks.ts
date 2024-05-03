@@ -28,13 +28,14 @@ export const list = query({
   },
 });
 
-export const reword = mutation({
+export const update = mutation({
   args: {
     id: v.id("tasks"),
     text: v.string(),
+    project: v.optional(v.id('projects')),
   },
-  handler: async (ctx, { id, text }) => {
-    await ctx.db.patch(id, { text });
+  handler: async (ctx, { id, text, project }) => {
+    await ctx.db.patch(id, { text, project });
   },
 });
 
