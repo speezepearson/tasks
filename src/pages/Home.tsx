@@ -10,7 +10,7 @@ import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
 import { textMatches, useNow } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
-import { formatDate } from "date-fns";
+import { formatDate, parseISO } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
@@ -47,6 +47,17 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     </form>
 }
 
+function guessTimeoutMillisFromText(text: string): { withoutDate: string; timeout: Date } | undefined {
+    const regexp = /(\d{4}-\d{2}-\d{2})$/;
+    const dateMatch = text.match(regexp);
+    if (dateMatch === null) return undefined;
+    console.log({ text, dateMatch, res: parseISO(dateMatch[1]).getTime() });
+    return {
+        withoutDate: text.replace(regexp, ''),
+        timeout: parseISO(dateMatch[1]),
+    };
+}
+
 function AddBlockerForm({ task, allTasks, allDelegations }: {
     task: Doc<'tasks'>,
     allTasks: List<Doc<'tasks'>>,
@@ -70,13 +81,18 @@ function AddBlockerForm({ task, allTasks, allDelegations }: {
             onSubmit={async (val) => {
                 switch (val.type) {
                     case "raw":
-                        await linkBlocker({
-                            id: task._id,
-                            blocker: {
-                                type: 'delegation',
-                                id: await createDelegation({ text: val.text }),
-                            },
-                        });
+                        await (async () => {
+                            const timeout = guessTimeoutMillisFromText(val.text);
+                            const newDelegationId = await createDelegation(
+                                timeout
+                                    ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
+                                    : { text: val.text }
+                            );
+                            await linkBlocker({
+                                id: task._id,
+                                blocker: { type: 'delegation', id: newDelegationId },
+                            });
+                        })();
                         break;
                     case "option":
                         await val.value.link();
@@ -442,7 +458,7 @@ function CreateDelegationForm() {
         if (working) return;
         setWorking(true);
         (async () => {
-            await createDelegation({ text, timeoutMillis: timeout ? new Date(timeout).getTime() : undefined });
+            await createDelegation({ text, timeoutMillis: timeout ? parseISO(timeout).getTime() : undefined });
             setText("");
             setTimeout("");
         })().catch(console.error).finally(() => {
@@ -450,7 +466,15 @@ function CreateDelegationForm() {
         });
     }}>
         <div className="d-flex flex-row">
-            <input className="form-control form-control-sm d-inline-block" value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new blocker text" />
+            <input className="form-control form-control-sm d-inline-block" value={text} onChange={(e) => {
+                const timeout = guessTimeoutMillisFromText(e.target.value);
+                if (timeout) {
+                    setTimeout(formatDate(timeout.timeout, 'yyyy-MM-dd'));
+                    setText(timeout.withoutDate);
+                } else {
+                    setText(e.target.value);
+                }
+            }} placeholder="new blocker text" />
             <input className="form-control form-control-sm d-inline-block ms-1" type="date" style={{ maxWidth: '10em' }} value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
             <button className="btn btn-sm btn-primary ms-1" type="submit">+blocker</button>
         </div>
