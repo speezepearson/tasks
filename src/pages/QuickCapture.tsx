@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
+import { SingleLineMarkdown } from "../SingleLineMarkdown";
 
 export function QuickCaptureForm() {
     const [text, setText] = useState("");
@@ -41,7 +42,9 @@ export function Page() {
         <ul className="list-group">
             {captures === undefined
                 ? <li className="list-group-item">Loading...</li>
-                : captures.map((capture, i) => <li key={i} className="list-group-item">{capture.text}</li>)}
+                : captures.map((capture, i) => <li key={i} className="list-group-item">
+                    <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
+                </li>)}
         </ul>
     </div>
 }
