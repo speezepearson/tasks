@@ -1,7 +1,7 @@
 import { List } from "immutable";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import { textMatches } from "./common";
+import { ReqStatus, textMatches, watchReqStatus } from "./common";
 
 export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: {
     options: List<T>,
@@ -10,7 +10,10 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
     onCancel: () => void,
 }) {
     const [field, setField] = useState("");
-    const [working, setWorking] = useState(false);
+    const [req, setReq] = useState<ReqStatus>({ type: "idle" });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
 
     const renderedOptions = useMemo(() => options.map(x => [x, render(x)] as const), [options, render]);
 
@@ -24,27 +27,25 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
         return field && field.length > 1 ? renderedOptions.filter(([, text]) => textMatches(text, field)) : renderedOptions.take(0);
     }, [renderedOptions, field]);
 
-    const submit = async (selectedIndex: number | null) => {
-        console.log("submit", selectedIndex, field, working);
-        if (working) return;
-        setWorking(true);
-        try {
+    const submit = (selectedIndex: number | null) => {
+        if (req.type === 'working') return;
+        watchReqStatus(setReq, (async (): Promise<void> => {
             if (selectedIndex === null) {
-                await onSubmit({ type: "raw", text: field });
+                await onSubmit({ type: "raw", text: field })
+                setField("");
+                setSelectedIndex(null);
             } else {
                 const match = matches.get(selectedIndex);
                 if (match !== undefined) {
-                    await onSubmit({ type: "option", value: match[0] });
+                    await onSubmit({ type: "option", value: match[0] })
+                    setField("");
+                    setSelectedIndex(null);
                 } else {
-                    console.error("No match found for selected index", selectedIndex);
+                    setReq({ type: "error", message: "No match found for selected index" });
                 }
             }
-            setField("");
-            setSelectedIndex(null);
-        } finally {
-            setWorking(false);
-        }
-    }
+        })()).catch(console.error);
+    };
     const goDown = () => {
         setSelectedIndex(selectedIndex === null ? 0 : selectedIndex >= matches.size - 1 ? null : selectedIndex + 1);
     }
@@ -72,7 +73,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
                 {matches.map(([, text], i) => <li key={i} className={`list-group-item py-0 ${i === selectedIndex ? 'active' : ''}`}
                     onMouseEnter={() => { setSelectedIndex(i) }}
                     onMouseLeave={() => { if (selectedIndex === i) setSelectedIndex(null) }}
-                    onClick={() => { submit(i).catch(console.error) }}
+                    onClick={() => { submit(i) }}
                 >
                     <Markdown>{text}</Markdown>
                 </li>)}
@@ -84,7 +85,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
             className="form-control form-control-sm d-inline-block"
             type="text"
             placeholder="blocker"
-            disabled={working}
+            disabled={req.type === 'working'}
             value={field}
             onChange={(e) => {
                 setField(e.target.value);
@@ -96,7 +97,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
             onFocus={() => { setFocused(true) }}
             onBlur={() => { setFocused(false) }}
             onKeyDown={(e) => {
-                if (working) return;
+                if (req.type === 'working') return;
                 switch (e.key) {
                     case 'ArrowDown':
                         e.preventDefault();
@@ -116,8 +117,7 @@ export function AutocompletingInput<T>({ options, render, onSubmit, onCancel }: 
                         break;
 
                     case "Enter":
-                        setWorking(true);
-                        submit(selectedIndex).catch(console.error);
+                        submit(selectedIndex);
                         break;
                     case "Escape":
                         setField("");

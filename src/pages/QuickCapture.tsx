@@ -1,30 +1,34 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
+import { ReqStatus, watchReqStatus } from "../common";
 
 export function QuickCaptureForm() {
     const [text, setText] = useState("");
     const createCapture = useMutation(api.captures.create);
-    const [working, setWorking] = useState(false);
+    const [req, setReq] = useState<ReqStatus>({ type: "idle" });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (working) return;
-        (async () => {
+        if (req.type === 'working') return;
+        watchReqStatus(setReq, (async () => {
             await createCapture({ text });
             setText("");
-        })().catch(console.error).finally(() => { setWorking(false) });
+        })()).catch(console.error);
     }}>
         <input
             autoFocus
-            disabled={working}
+            disabled={req.type === 'working'}
             value={text}
             onChange={(e) => { setText(e.target.value) }}
             className="form-control form-control-sm d-inline-block"
             style={{ width: "20em" }}
         />
-        <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+note</button>
+        <button className="btn btn-sm btn-primary ms-1" disabled={req.type === 'working'} type="submit">+note</button>
     </form>
 }
 

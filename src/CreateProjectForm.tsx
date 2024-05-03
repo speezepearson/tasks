@@ -1,28 +1,32 @@
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ReqStatus, watchReqStatus } from "./common";
 
 export function CreateProjectForm() {
     const createProject = useMutation(api.projects.create);
     const [name, setName] = useState("");
     const [color, setColor] = useState(randomLightColor());
 
-    const [working, setWorking] = useState(false);
+    const [req, setReq] = useState<ReqStatus>({ type: "idle" });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
+        if (req.type === "working") return;
         if (name === "") return;
-        setWorking(true);
-        (async () => {
-            createProject({ name, color: color === "" ? undefined : color });
+        watchReqStatus(setReq, (async () => {
+            await createProject({ name, color: color === "" ? undefined : color });
             setName("");
             setColor(randomLightColor());
-        })().catch(console.error).finally(() => { setWorking(false); });
+        })()).catch(console.error);
     }}>
-        <input disabled={working} placeholder="Task App" className="form-control form-control-sm d-inline-block" style={{ width: '20em' }} value={name} onChange={(e) => { setName(e.target.value); }} />
-        <input disabled={working} type="color" className="form-control form-control-sm d-inline-block ms-1" style={{ width: '4em' }} value={color} onChange={(e) => { setColor(e.target.value); }} />
+        <input disabled={req.type === 'working'} placeholder="Task App" className="form-control form-control-sm d-inline-block" style={{ width: '20em' }} value={name} onChange={(e) => { setName(e.target.value); }} />
+        <input disabled={req.type === 'working'} type="color" className="form-control form-control-sm d-inline-block ms-1" style={{ width: '4em' }} value={color} onChange={(e) => { setColor(e.target.value); }} />
         <div className="mt-1 mx-auto">
-            <button disabled={working} className="btn btn-sm btn-primary ms-1" type="submit">+project</button>
+            <button disabled={req.type === 'working'} className="btn btn-sm btn-primary ms-1" type="submit">+project</button>
         </div>
     </form>;
 }

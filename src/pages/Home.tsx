@@ -14,7 +14,7 @@ import { Button, Form, Modal } from "react-bootstrap";
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
     const [text, setText] = useState("");
-    const [working, setWorking] = useState(false);
+    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
     const inputRef = useRef<HTMLInputElement>(null);
 
     const [justCreated, setJustCreated] = useState(false);
@@ -28,19 +28,16 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
 
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (working) return;
-        setWorking(true);
-        (async () => {
+        if (req.type === 'working') return;
+        watchReqStatus(setReq, (async () => {
             await createTask({ text, project: project?._id });
             setText("");
-        })().catch(console.error).finally(() => {
-            setWorking(false);
             setJustCreated(true);
-        });
+        })()).catch(console.error);
     }}>
         <div className="d-flex flex-row">
-            <input className="form-control form-control-sm d-inline-block" ref={inputRef} disabled={working} value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new task text" />
-            <button className="btn btn-sm btn-primary ms-1" disabled={working} type="submit">+task</button>
+            <input className="form-control form-control-sm d-inline-block" ref={inputRef} disabled={req.type === 'working'} value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new task text" />
+            <button className="btn btn-sm btn-primary ms-1" disabled={req.type === 'working'} type="submit">+task</button>
         </div>
     </form>
 }
@@ -130,6 +127,9 @@ function EditTaskModal({ task, projectsById, onHide }: {
     const [newProjectId, setNewProjectId] = useState(task.project);
 
     const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
+    useEffect(() => {
+        if (saveReq.type === 'error') alert(saveReq.message);
+    }, [saveReq]);
 
     const doSave = () => { watchReqStatus(setSaveReq, update({ id: task._id, text: newText, project: newProjectId }).then(onHide)).catch(console.error) }
 
@@ -167,7 +167,6 @@ function EditTaskModal({ task, projectsById, onHide }: {
                 </Form.Group>
 
             </Form>
-            {saveReq.type === "error" && <div className="alert alert-danger">{saveReq.message}</div>}
         </Modal.Body>
         <Modal.Footer>
             <Button variant="outline-secondary" onClick={onHide}>
@@ -193,7 +192,10 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
     const [editing, setEditing] = useState(false);
 
     const now = useNow();
-    const [working, setWorking] = useState(false);
+    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
     const blocked = outstandingBlockers.size > 0;
@@ -209,13 +211,12 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
                 type="checkbox"
                 checked={task.completedAtMillis !== undefined}
                 onChange={(e) => {
-                    if (working) return;
-                    setWorking(true);
-                    setCompleted({ id: task._id, isCompleted: e.target.checked })
-                        .catch(console.error).finally(() => { setWorking(false) });
+                    if (req.type === 'working') return;
+                    watchReqStatus(setReq, setCompleted({ id: task._id, isCompleted: e.target.checked }))
+                        .catch(console.error);
                 }}
                 style={{ width: '1em', height: '1em' }}
-                disabled={working || (blocked && task.completedAtMillis === undefined)} />
+                disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
             {" "}
             <div className={`ms-1 overflow-hidden text-truncate flex-grow-1 ${blocked ? "text-muted" : ""}`}
                 role="button"
@@ -288,6 +289,9 @@ function EditProjectModal({ project, onHide }: {
     const [newColor, setNewColor] = useState(project.color);
 
     const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
+    useEffect(() => {
+        if (saveReq.type === 'error') alert(saveReq.message);
+    }, [saveReq]);
 
     const doSave = () => { watchReqStatus(setSaveReq, update({ id: project._id, name: newName, color: newColor }).then(onHide)).catch(console.error) }
 
@@ -321,7 +325,6 @@ function EditProjectModal({ project, onHide }: {
                 </Form.Group>
 
             </Form>
-            {saveReq.type === "error" && <div className="alert alert-danger">{saveReq.message}</div>}
         </Modal.Body>
         <Modal.Footer>
             <Button variant="outline-secondary" onClick={onHide}>
@@ -527,6 +530,9 @@ function EditDelegationModal({ delegation, onHide }: {
     const [newTimeoutMillis, setNewTimeoutMillis] = useState(delegation.timeoutMillis);
 
     const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
+    useEffect(() => {
+        if (saveReq.type === 'error') alert(saveReq.message);
+    }, [saveReq]);
 
     const doSave = () => { watchReqStatus(setSaveReq, update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis }).then(onHide)).catch(console.error) }
 
@@ -561,7 +567,6 @@ function EditDelegationModal({ delegation, onHide }: {
                 </Form.Group>
 
             </Form>
-            {saveReq.type === "error" && <div className="alert alert-danger">{saveReq.message}</div>}
         </Modal.Body>
         <Modal.Footer>
             <Button variant="outline-secondary" onClick={onHide}>
@@ -627,19 +632,19 @@ function CreateDelegationForm() {
     const createDelegation = useMutation(api.delegations.create);
     const [text, setText] = useState("");
     const [timeout, setTimeout] = useState(formatDate(new Date(), 'yyyy-MM-dd'));
-    const [working, setWorking] = useState(false);
+    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (working) return;
-        setWorking(true);
-        (async () => {
+        if (req.type === 'working') return;
+        watchReqStatus(setReq, (async () => {
             await createDelegation({ text, timeoutMillis: timeout ? parseISO(timeout).getTime() : undefined });
             setText("");
             setTimeout("");
-        })().catch(console.error).finally(() => {
-            setWorking(false);
-        });
+        })()).catch(console.error);
     }}>
         <div className="d-flex flex-row">
             <input className="form-control form-control-sm d-inline-block" value={text} onChange={(e) => {
