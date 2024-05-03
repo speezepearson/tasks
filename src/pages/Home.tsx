@@ -172,24 +172,24 @@ function Task({ task, tasksById, miscBlockersById }: {
         {blocked
             && <div className="ms-4">
                 blocked on:
-                <ul className="list-group">
+                <div className="ms-4">
                     {outstandingBlockers.map((blocker) => {
                         const unlinkButton = <button
-                            className="btn btn-sm btn-outline-secondary"
+                            className="btn btn-sm btn-outline-secondary py-0"
                             onClick={() => { unlinkBlocker({ id: task._id, blocker }).catch(console.error) }}>-</button>;
                         switch (blocker.type) {
                             case "task":
-                                return <li key={blocker.id} className="list-group-item">
+                                return <div key={blocker.id}>
                                     <SingleLineMarkdown>{tasksById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
-                                </li>
+                                </div>
                             case "time":
-                                return <li key="__time" className="list-group-item">
+                                return <div key="__time">
                                     {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
-                                </li>
+                                </div>
                             case "misc":
-                                return <li key={blocker.id} className="list-group-item">
+                                return <div key={blocker.id}>
                                     <input
                                         type="checkbox"
                                         id={`task-${task._id}--miscBlocker-${blocker.id}`}
@@ -201,10 +201,10 @@ function Task({ task, tasksById, miscBlockersById }: {
                                         <SingleLineMarkdown>{miscBlockersById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     </label>
                                     {" "} {unlinkButton}
-                                </li>
+                                </div>
                         }
                     })}
-                </ul>
+                </div>
             </div>
         }
     </div>
