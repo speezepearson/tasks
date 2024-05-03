@@ -4,7 +4,7 @@ import { v } from "convex/values";
 export const vBlocker = v.union(
   v.object({ type: v.literal('task'), id: v.id('tasks') }),
   v.object({ type: v.literal('time'), millis: v.number() }),
-  v.object({ type: v.literal('misc'), id: v.id('miscBlockers') }),
+  v.object({ type: v.literal('delegation'), id: v.id('delegations') }),
 );
 
 export default defineSchema({
@@ -27,7 +27,7 @@ export default defineSchema({
     project: v.optional(v.id('projects')),
   }),
 
-  miscBlockers: defineTable({
+  delegations: defineTable({
     text: v.string(),
     timeoutMillis: v.optional(v.number()),
     completedAtMillis: v.optional(v.number()),

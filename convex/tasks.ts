@@ -91,7 +91,7 @@ const blockersEqual = (a: Doc<'tasks'>['blockers'][0], b: Doc<'tasks'>['blockers
         return false;
       }
       return a.millis === b.millis;
-    case 'misc':
+    case 'delegation':
       if (a.type !== b.type) {
         return false;
       }

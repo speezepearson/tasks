@@ -7,12 +7,12 @@ export const create = mutation({
     timeoutMillis: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("miscBlockers", { text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined });
+    return await ctx.db.insert("delegations", { text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined });
   },
 });
 
 export const get = query({
-  args: { id: v.id("miscBlockers") },
+  args: { id: v.id("delegations") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
@@ -21,13 +21,13 @@ export const get = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("miscBlockers").collect();
+    return await ctx.db.query("delegations").collect();
   },
 });
 
 export const setCompleted = mutation({
   args: {
-    id: v.id("miscBlockers"),
+    id: v.id("delegations"),
     isCompleted: v.boolean(),
   },
   handler: async (ctx, { id, isCompleted }) => {

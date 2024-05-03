@@ -47,18 +47,18 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     </form>
 }
 
-function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
+function AddBlockerForm({ task, allTasks, allDelegations }: {
     task: Doc<'tasks'>,
     allTasks: List<Doc<'tasks'>>,
-    allMiscBlockers: List<Doc<'miscBlockers'>>,
+    allDelegations: List<Doc<'delegations'>>,
 }) {
     const linkBlocker = useMutation(api.tasks.linkBlocker);
-    const createMiscBlocker = useMutation(api.miscBlockers.create);
+    const createDelegation = useMutation(api.delegations.create);
 
     const options = useMemo(() => List([
         ...allTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
-        ...allMiscBlockers.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'misc', id: b._id } }) })),
-    ]), [allTasks, allMiscBlockers, linkBlocker, task._id]);
+        ...allDelegations.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } }) })),
+    ]), [allTasks, allDelegations, linkBlocker, task._id]);
     const render = useCallback((x: { text: string }) => x.text, []);
 
     const [showInput, setShowInput] = useState(false);
@@ -73,8 +73,8 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
                         await linkBlocker({
                             id: task._id,
                             blocker: {
-                                type: 'misc',
-                                id: await createMiscBlocker({ text: val.text }),
+                                type: 'delegation',
+                                id: await createDelegation({ text: val.text }),
                             },
                         });
                         break;
@@ -88,10 +88,10 @@ function AddBlockerForm({ task, allTasks, allMiscBlockers }: {
         : <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setShowInput(true) }}>+blocker</button>;
 }
 
-function getOutstandingBlockers({ task, tasksById, miscBlockersById, now }: {
+function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
     task: Doc<'tasks'>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
-    miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
+    delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
     now: Date,
 }): List<Doc<'tasks'>['blockers'][0]> {
     return List(task.blockers.filter((blocker) => {
@@ -100,20 +100,20 @@ function getOutstandingBlockers({ task, tasksById, miscBlockersById, now }: {
                 return tasksById.get(blocker.id)!.completedAtMillis === undefined;
             case "time":
                 return blocker.millis > now.getTime();
-            case "misc":
-                return miscBlockersById.get(blocker.id)!.completedAtMillis === undefined;
+            case "delegation":
+                return delegationsById.get(blocker.id)!.completedAtMillis === undefined;
         }
     }));
 }
 
-function Task({ task, tasksById, miscBlockersById }: {
+function Task({ task, tasksById, delegationsById: delegationsById }: {
     task: Doc<'tasks'>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
-    miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
+    delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
 }) {
     const unlinkBlocker = useMutation(api.tasks.unlinkBlocker);
     const setCompleted = useMutation(api.tasks.setCompleted);
-    const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
+    const setDelegationCompleted = useMutation(api.delegations.setCompleted);
 
     const reword = useMutation(api.tasks.reword);
     const [editField, setEditField] = useState<string | null>(null);
@@ -121,7 +121,7 @@ function Task({ task, tasksById, miscBlockersById }: {
     const now = useNow();
     const [working, setWorking] = useState(false);
 
-    const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
+    const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
     const blocked = outstandingBlockers.size > 0;
     return <div>
         <div className="d-flex flex-row">
@@ -171,7 +171,7 @@ function Task({ task, tasksById, miscBlockersById }: {
                 <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setEditField(task.text) }}>edit</button>
             </div>
             <div className="align-self-start">
-                <AddBlockerForm task={task} allTasks={List(tasksById.values())} allMiscBlockers={List(miscBlockersById.values())} />
+                <AddBlockerForm task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />
             </div>
         </div>
         {blocked
@@ -193,16 +193,16 @@ function Task({ task, tasksById, miscBlockersById }: {
                                     {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
                                 </div>
-                            case "misc":
+                            case "delegation":
                                 return <div key={blocker.id}>
                                     <input
                                         type="checkbox"
-                                        checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined}
-                                        onChange={(e) => { setMiscBlockerCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error) }}
+                                        checked={delegationsById.get(blocker.id)!.completedAtMillis !== undefined}
+                                        onChange={(e) => { setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error) }}
                                         style={{ width: '1em', height: '1em' }}
                                     />
                                     {" "}
-                                    <SingleLineMarkdown>{miscBlockersById.get(blocker.id)!.text}</SingleLineMarkdown>
+                                    <SingleLineMarkdown>{delegationsById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
                                 </div>
                         }
@@ -228,12 +228,12 @@ function ProjectCard({
     project,
     projectTasks,
     tasksById,
-    miscBlockersById,
+    delegationsById,
 }: {
     project: Doc<'projects'> | undefined,
     projectTasks: List<Doc<'tasks'>>,
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>,
-    miscBlockersById: Map<Id<'miscBlockers'>, Doc<'miscBlockers'>>,
+    delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
 }) {
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime]);
@@ -254,7 +254,7 @@ function ProjectCard({
                     <Task
                         task={task}
                         tasksById={tasksById}
-                        miscBlockersById={miscBlockersById}
+                        delegationsById={delegationsById}
                     />
                 </div>
             )}
@@ -265,8 +265,8 @@ function ProjectCard({
 export function Page() {
     const projects = mapundef(useQuery(api.projects.list), List);
     const tasks = mapundef(useQuery(api.tasks.list), List);
-    const blockers = mapundef(useQuery(api.miscBlockers.list), List);
-    const setMiscBlockerCompleted = useMutation(api.miscBlockers.setCompleted);
+    const blockers = mapundef(useQuery(api.delegations.list), List);
+    const setDelegationCompleted = useMutation(api.delegations.setCompleted);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
     const tasksByProject = useMemo(() => {
@@ -279,16 +279,16 @@ export function Page() {
         return res;
     }, [tasks, projectsById]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
-    const miscBlockersById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
+    const delegationsById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
     const now = useNow();
 
     const outstandingBlockers = useMemo(() => {
-        return tasksById && miscBlockersById && tasks && Map(
+        return tasksById && delegationsById && tasks && Map(
             tasks
-                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, miscBlockersById, now })])
+                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, delegationsById, now })])
         );
-    }, [tasks, tasksById, miscBlockersById, now]);
+    }, [tasks, tasksById, delegationsById, now]);
 
     const nextActions = useMemo(() => {
         return outstandingBlockers && tasks
@@ -304,20 +304,20 @@ export function Page() {
         || projectsById === undefined
         || tasksByProject === undefined
         || tasksById === undefined
-        || miscBlockersById === undefined
+        || delegationsById === undefined
         || nextActions === undefined
         || outstandingBlockers === undefined
     ) {
         return <div>Loading...</div>
     }
 
-    const showMiscBlocker = (blocker: Doc<'miscBlockers'>) => {
+    const showDelegation = (blocker: Doc<'delegations'>) => {
         return <div className="d-flex flex-row">
             <div>
                 <input
                     type="checkbox"
                     checked={blocker.completedAtMillis !== undefined}
-                    onChange={(e) => { setMiscBlockerCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
+                    onChange={(e) => { setDelegationCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
                     style={{ width: '1em', height: '1em' }}
                 />
             </div>
@@ -343,7 +343,7 @@ export function Page() {
             <h1 className="text-center"> Timed Out </h1>
             <ul className="list-group">
                 {timedOutBlockers
-                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
+                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showDelegation(blocker)}</li>)}
             </ul>
         </div>
 
@@ -371,7 +371,7 @@ export function Page() {
                                 textMatches(task.text, nextActionFilterField)
                             )}
                             tasksById={tasksById}
-                            miscBlockersById={miscBlockersById}
+                            delegationsById={delegationsById}
                         />
                     ))}
             </div>
@@ -389,7 +389,7 @@ export function Page() {
                         project={project}
                         projectTasks={projectTasks}
                         tasksById={tasksById}
-                        miscBlockersById={miscBlockersById}
+                        delegationsById={delegationsById}
                     />
                 ))}
             <div className="text-center mt-2">
@@ -398,13 +398,13 @@ export function Page() {
         </div>
 
         <div className="mt-4">
-            <h1 className="text-center"> Misc blockers </h1>
+            <h1 className="text-center"> Delegations </h1>
             <ul className="list-group">
                 {blockers
                     .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
-                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showMiscBlocker(blocker)}</li>)}
+                    .map((blocker) => <li key={blocker._id} className="list-group-item">{showDelegation(blocker)}</li>)}
                 <li className="list-group-item">
-                    <CreateMiscBlockerForm />
+                    <CreateDelegationForm />
                 </li>
             </ul>
         </div>
@@ -431,8 +431,8 @@ function Inbox() {
     </div>
 }
 
-function CreateMiscBlockerForm() {
-    const createMiscBlocker = useMutation(api.miscBlockers.create);
+function CreateDelegationForm() {
+    const createDelegation = useMutation(api.delegations.create);
     const [text, setText] = useState("");
     const [timeout, setTimeout] = useState(formatDate(new Date(), 'yyyy-MM-dd'));
     const [working, setWorking] = useState(false);
@@ -442,7 +442,7 @@ function CreateMiscBlockerForm() {
         if (working) return;
         setWorking(true);
         (async () => {
-            await createMiscBlocker({ text, timeoutMillis: timeout ? new Date(timeout).getTime() : undefined });
+            await createDelegation({ text, timeoutMillis: timeout ? new Date(timeout).getTime() : undefined });
             setText("");
             setTimeout("");
         })().catch(console.error).finally(() => {
