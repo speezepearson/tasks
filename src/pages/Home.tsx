@@ -121,8 +121,6 @@ function Task({ task, tasksById, miscBlockersById }: {
     const now = useNow();
     const [working, setWorking] = useState(false);
 
-    const uid = useMemo(() => Math.random(), []);
-
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, miscBlockersById, now });
     const blocked = outstandingBlockers.size > 0;
     return <div>
@@ -130,7 +128,6 @@ function Task({ task, tasksById, miscBlockersById }: {
             <input
                 className="align-self-start mt-1"
                 type="checkbox"
-                id={`${uid}-task-${task._id}`}
                 checked={task.completedAtMillis !== undefined}
                 onChange={(e) => {
                     if (working) return;
@@ -139,15 +136,13 @@ function Task({ task, tasksById, miscBlockersById }: {
                     setCompleted({ id: task._id, isCompleted: e.target.checked })
                         .catch(console.error).finally(() => { setWorking(false) });
                 }}
+                style={{ width: '1em', height: '1em' }}
                 disabled={working || (blocked && task.completedAtMillis === undefined)} />
             {" "}
             {editField === null
-                ? <label
-                    htmlFor={`${uid}-task-${task._id}`}
-                    className={`ms-1 overflow-hidden text-truncate ${blocked ? "text-muted" : ""}`}
-                    style={{}}>
+                ? <span className={`ms-1 overflow-hidden text-truncate ${blocked ? "text-muted" : ""}`} >
                     <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
-                </label>
+                </span>
                 : <input
                     type="text"
                     className="form-control form-control-sm ms-1"
@@ -202,14 +197,12 @@ function Task({ task, tasksById, miscBlockersById }: {
                                 return <div key={blocker.id}>
                                     <input
                                         type="checkbox"
-                                        id={`task-${task._id}--miscBlocker-${blocker.id}`}
                                         checked={miscBlockersById.get(blocker.id)!.completedAtMillis !== undefined}
                                         onChange={(e) => { setMiscBlockerCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error) }}
+                                        style={{ width: '1em', height: '1em' }}
                                     />
                                     {" "}
-                                    <label htmlFor={`task-${task._id}--miscBlocker-${blocker.id}`}>
-                                        <SingleLineMarkdown>{miscBlockersById.get(blocker.id)!.text}</SingleLineMarkdown>
-                                    </label>
+                                    <SingleLineMarkdown>{miscBlockersById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
                                 </div>
                         }
@@ -323,19 +316,17 @@ export function Page() {
             <div>
                 <input
                     type="checkbox"
-                    id={`miscBlocker-${blocker._id}`}
                     checked={blocker.completedAtMillis !== undefined}
                     onChange={(e) => { setMiscBlockerCompleted({ id: blocker._id, isCompleted: e.target.checked }).catch(console.error) }}
+                    style={{ width: '1em', height: '1em' }}
                 />
             </div>
             <div className="ms-1">
-                <label htmlFor={`miscBlocker-${blocker._id}`}>
-                    {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
-                        <span className="text-danger">TIMED OUT: </span>}
-                    <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
-                    {" "}
-                    {blocker.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
-                </label>
+                {blocker.completedAtMillis === undefined && blocker.timeoutMillis && blocker.timeoutMillis < now.getTime() &&
+                    <span className="text-danger">TIMED OUT: </span>}
+                <SingleLineMarkdown>{blocker.text}</SingleLineMarkdown>
+                {" "}
+                {blocker.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(blocker.timeoutMillis, 'yyyy-MM-dd')})</span>}
             </div>
         </div>
     }
