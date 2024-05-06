@@ -411,12 +411,6 @@ export function Page() {
         );
     }, [tasks, tasksById, delegationsById, now]);
 
-    const nextActions = useMemo(() => {
-        return outstandingBlockers && tasks
-            ?.sortBy((task) => [task.project === undefined, task.project])
-            .filter((task) => task.completedAtMillis === undefined && outstandingBlockers.get(task._id)!.isEmpty());
-    }, [tasks, outstandingBlockers]);
-
     const [nextActionFilterField, setNextActionFilterField] = useState("");
 
     if (projects === undefined
@@ -426,7 +420,6 @@ export function Page() {
         || tasksByProject === undefined
         || tasksById === undefined
         || delegationsById === undefined
-        || nextActions === undefined
         || outstandingBlockers === undefined
     ) {
         return <div>Loading...</div>
