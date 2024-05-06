@@ -353,7 +353,7 @@ function ProjectCard({
 
     const [editing, setEditing] = useState(false);
 
-    const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime]);
+    const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
     return <details open={!projectTasks.isEmpty()} className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
         <summary>
@@ -390,14 +390,20 @@ export function Page() {
     const blockers = mapundef(useQuery(api.delegations.list), List);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
-    const tasksByProject = useMemo(() => {
+    const tasksGroupedByProject = useMemo(() => {
         if (projectsById === undefined || tasks === undefined) return undefined;
         let res = tasks.groupBy(t => t.project && projectsById.get(t.project));
         projectsById.forEach((project) => {
             if (!res.has(project)) res = res.set(project, List());
         });
         if (!res.has(undefined)) res = res.set(undefined, List());
-        return res;
+        return res.entrySeq()
+            .sortBy(([p, pt]) => [
+                p === undefined, // towards the end if p is 'misc'
+                pt.isEmpty(), // towards the end if there are no tasks
+                pt.filter(t => t.completedAtMillis === undefined).size > 0, // towards the end if there are no incomplete tasks
+                p !== undefined && -p._creationTime // towards the end if p is older
+            ], listcmp);
     }, [tasks, projectsById]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
     const delegationsById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
@@ -417,7 +423,7 @@ export function Page() {
         || tasks === undefined
         || blockers === undefined
         || projectsById === undefined
-        || tasksByProject === undefined
+        || tasksGroupedByProject === undefined
         || tasksById === undefined
         || delegationsById === undefined
         || outstandingBlockers === undefined
@@ -455,8 +461,7 @@ export function Page() {
                 />
             </div>
             <div className="mt-1">
-                {tasksByProject.entrySeq()
-                    .sortBy(([p, pt]) => [p === undefined, pt.isEmpty(), pt.filter(t => t.completedAtMillis).size > 0, p?._creationTime])
+                {tasksGroupedByProject
                     .map(([p, projectTasks]) => (
                         <ProjectCard
                             key={p?._id ?? "<undef>"}
@@ -478,8 +483,7 @@ export function Page() {
             <div className="text-center">
                 <h1>Projects</h1>
             </div>
-            {tasksByProject.entrySeq()
-                .sortBy(([p, pt]) => [p === undefined, pt.isEmpty(), pt.filter(t => t.completedAtMillis).size > 0, p?._creationTime])
+            {tasksGroupedByProject
                 .map(([project, projectTasks]) => (
                     <ProjectCard
                         key={project?._id ?? "<undef>"}
@@ -500,7 +504,7 @@ export function Page() {
             <div className="card p-2">
                 <div className="ms-4">
                     {blockers
-                        .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text])
+                        .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
                         .map((blocker) => <div key={blocker._id}>
                             <Delegation delegation={blocker} />
                         </div>)}
@@ -511,6 +515,14 @@ export function Page() {
             </div>
         </div>
     </div>
+}
+
+function listcmp<T>(a: T[], b: T[]): number {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+        if (a[i] < b[i]) return -1;
+        if (a[i] > b[i]) return 1;
+    }
+    return a.length - b.length;
 }
 
 function EditDelegationModal({ delegation, onHide }: {
