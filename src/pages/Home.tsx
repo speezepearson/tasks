@@ -3,13 +3,13 @@ import { api } from "../../convex/_generated/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { QuickCaptureForm } from "./QuickCapture";
 import { AutocompletingInput } from "../AutocompletingInput";
 import { ReqStatus, textMatches, useNow, watchReqStatus } from "../common";
 import { CreateProjectForm } from "../CreateProjectForm";
 import { formatDate, parseISO } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
 import { Button, Form, Modal } from "react-bootstrap";
+import { Inbox } from "../Inbox";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -610,26 +610,6 @@ function Delegation({ delegation }: { delegation: Doc<'delegations'> }) {
             {" "}
             {delegation.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</span>}
         </div>
-    </div>
-}
-
-function Inbox() {
-    const captures = useQuery(api.captures.list, { limit: 10 });
-    const archive = useMutation(api.captures.archive);
-
-    return <div>
-        <ul className="list-group">
-
-            <li className="list-group-item text-center">
-                <QuickCaptureForm />
-            </li>
-
-            {captures?.map((capture) => <li key={capture._id} className="list-group-item">
-                <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
-                <button className="btn btn-sm btn-outline-secondary ms-2" onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</button>
-            </li>)}
-        </ul>
-
     </div>
 }
 
