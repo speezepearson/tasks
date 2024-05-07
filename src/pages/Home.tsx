@@ -37,7 +37,7 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     }}>
         <Stack direction="row">
             <TextField size="small" sx={{ flexGrow: 1 }} ref={inputRef} disabled={req.type === 'working'} value={text} onChange={(e) => { setText(e.target.value) }} label="New task text" />
-            <Button sx={{ ml: 1 }} variant="contained" size="small" disabled={req.type === 'working'} disableRipple type="submit">+task</Button>
+            <Button sx={{ ml: 1 }} variant="contained" size="small" disabled={req.type === 'working'} type="submit">+task</Button>
         </Stack>
     </form>
 }
@@ -52,7 +52,8 @@ function guessTimeoutMillisFromText(text: string): { withoutDate: string; timeou
     };
 }
 
-function AddBlockerForm({ task, allTasks, allDelegations }: {
+function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
+    onHide: () => unknown,
     task: Doc<'tasks'>,
     allTasks: List<Doc<'tasks'>>,
     allDelegations: List<Doc<'delegations'>>,
@@ -71,48 +72,70 @@ function AddBlockerForm({ task, allTasks, allDelegations }: {
         if (req.type === 'error') alert(req.message);
     }, [req]);
 
-    const [showInput, setShowInput] = useState(false);
+    // HACK: autofocus doesn't work without this ref hack.
+    // Probably related to https://github.com/mui/material-ui/issues/33004
+    // but the `disableRestoreFocus` workaround doesn't work here --
+    // maybe because this is an Autocomplete, not a TextField?
+    const inputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        setTimeout(() => {
+            inputRef.current?.getElementsByTagName('input')[0].focus();
+        }, 0);
+    }, [inputRef])
 
-    return <>{showInput
-        ? <form
-            onSubmit={(e) => {
-                e.preventDefault();
-                watchReqStatus(setReq,
-                    (async () => {
-                        const link = optionsByText.get(text);
-                        if (link === undefined) {
-                            const timeout = guessTimeoutMillisFromText(text);
-                            const newDelegationId = await createDelegation(
-                                timeout
-                                    ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
-                                    : { text }
-                            );
-                            await linkBlocker({
-                                id: task._id,
-                                blocker: { type: 'delegation', id: newDelegationId },
-                            });
-                        } else {
-                            console.log("awaiting link for", text);
-                            await link();
-                        }
-                        setShowInput(false);
-                    })()).catch(console.error);
-            }}
-        >
-            <Autocomplete
-                freeSolo
-                blurOnSelect={false}
-                onBlur={() => { setShowInput(false) }}
-                size="small"
-                options={optionsByText.keySeq().sort().toArray()}
-                renderInput={(params) => <TextField {...params} label="Blocker" />}
-                value={text}
-                onChange={(_, value) => { setText(value ?? "") }}
-            />
-        </form>
-        : <Button size="small" variant="outlined" sx={{ py: 0 }} onClick={() => { setShowInput(true) }}>+blocker</Button>
-    }
-    </>
+    return <Dialog open onClose={onHide} fullWidth>
+        <DialogTitle>Add blocker to "{task.text}"</DialogTitle>
+        <DialogContent>
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    watchReqStatus(setReq,
+                        (async () => {
+                            const link = optionsByText.get(text);
+                            console.log("link", link);
+                            if (link === undefined) {
+                                const timeout = guessTimeoutMillisFromText(text);
+                                const newDelegationId = await createDelegation(
+                                    timeout
+                                        ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
+                                        : { text }
+                                );
+                                await linkBlocker({
+                                    id: task._id,
+                                    blocker: { type: 'delegation', id: newDelegationId },
+                                });
+                            } else {
+                                console.log("awaiting link for", text);
+                                await link();
+                            }
+                            onHide();
+                        })()).catch(console.error);
+                }}
+            >
+                <Autocomplete
+                    freeSolo
+                    ref={inputRef}
+                    autoFocus
+                    blurOnSelect={false}
+                    onBlur={onHide}
+                    size="small"
+                    sx={{ my: 1 }}
+                    options={optionsByText.keySeq().sort().toArray()}
+                    renderInput={(params) => <TextField {...params} label="Blocker" />}
+                    value={text}
+                    onChange={(_, value) => { setText(value ?? "") }}
+                />
+            </form>
+        </DialogContent>
+        <DialogActions>
+            <Button variant="outlined" onClick={onHide}>
+                Close
+            </Button>
+            <Button variant="contained" type="submit">
+                Add blocker
+            </Button>
+        </DialogActions>
+    </Dialog>;
 }
 
 function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
@@ -199,6 +222,7 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
     const setDelegationCompleted = useMutation(api.delegations.setCompleted);
 
     const [editing, setEditing] = useState(false);
+    const [showBlockerModal, setShowBlockerModal] = useState(false);
 
     const now = useNow();
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
@@ -231,7 +255,8 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
             >
                 <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
             </Typography>
-            <AddBlockerForm task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />
+            {showBlockerModal && <AddBlockerModal onHide={() => { setShowBlockerModal(false) }} task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />}
+            <Button size="small" variant="outlined" sx={{ py: 0 }} onClick={() => { setShowBlockerModal(true) }}>+blocker</Button>
         </Stack>
         {blocked
             && <Box sx={{ ml: 4 }}>
