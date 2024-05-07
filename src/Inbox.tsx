@@ -7,18 +7,19 @@ export function Inbox() {
     const captures = useQuery(api.captures.list, { limit: 10 });
     const archive = useMutation(api.captures.archive);
 
-    return <div>
-        <ul className="list-group">
+    return <div className="card p-2">
 
-            <li className="list-group-item text-center">
-                <QuickCaptureForm />
-            </li>
+        <li className="list-group-item text-center">
+            <QuickCaptureForm />
+        </li>
 
-            {captures?.map((capture) => <li key={capture._id} className="list-group-item">
+        <div className="ms-4">
+            {captures?.map((capture) => <div key={capture._id} className="d-flex flex-row">
                 <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
-                <button className="btn btn-sm btn-outline-secondary ms-2" onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</button>
-            </li>)}
-        </ul>
+                <div className="ms-auto"></div>
+                <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</button>
+            </div>)}
+        </div>
 
     </div>
 }
