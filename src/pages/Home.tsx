@@ -467,20 +467,22 @@ export function Page() {
                 )
                     ? <Box>Loading...</Box>
                     : tasksGroupedByProject
-                        .map(([p, projectTasks]) => (
-                            <ProjectCard
+                        .map(([p, projectTasks]) => {
+                            projectTasks = projectTasks.filter((task) =>
+                                task.completedAtMillis === undefined &&
+                                outstandingBlockers.get(task._id)!.isEmpty() &&
+                                textMatches(task.text, nextActionFilterField)
+                            );
+                            if (projectTasks.isEmpty()) return null;
+                            return <ProjectCard
                                 key={p?._id ?? "<undef>"}
                                 project={p}
-                                projectTasks={projectTasks.filter((task) =>
-                                    task.completedAtMillis === undefined &&
-                                    outstandingBlockers.get(task._id)!.isEmpty() &&
-                                    textMatches(task.text, nextActionFilterField)
-                                )}
+                                projectTasks={projectTasks}
                                 projectsById={projectsById}
                                 tasksById={tasksById}
                                 delegationsById={delegationsById}
                             />
-                        ))}
+                        })}
             </Box>
         </Box>
 
