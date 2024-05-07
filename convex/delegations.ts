@@ -8,7 +8,7 @@ export const create = mutationWithUser({
     project: v.optional(v.id("projects")),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("delegations", { text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined, project: args.project });
+    return await ctx.db.insert("delegations", { owner: ctx.user._id, text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined, project: args.project });
   },
 });
 
@@ -20,6 +20,9 @@ export const update = mutationWithUser({
     project: v.optional(v.id("projects")),
   },
   handler: async (ctx, { id, ...fields }) => {
+    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+      throw new Error('not found');
+    }
     await ctx.db.patch(id, fields);
   },
 });
@@ -27,6 +30,10 @@ export const update = mutationWithUser({
 export const get = queryWithUser({
   args: { id: v.id("delegations") },
   handler: async (ctx, args) => {
+    const res = await ctx.db.get(args.id);
+    if (!(res?.owner === ctx.user._id)) {
+      throw new Error('not found');
+    }
     return await ctx.db.get(args.id);
   },
 });
@@ -34,7 +41,7 @@ export const get = queryWithUser({
 export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("delegations").collect();
+    return await ctx.db.query("delegations").withIndex('owner', q => q.eq('owner', ctx.user._id)).collect();
   },
 });
 
@@ -44,6 +51,9 @@ export const setCompleted = mutationWithUser({
     isCompleted: v.boolean(),
   },
   handler: async (ctx, { id, isCompleted }) => {
+    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+      throw new Error('not found');
+    }
     await ctx.db.patch(id, { completedAtMillis: isCompleted ? Date.now() : undefined });
   },
 });

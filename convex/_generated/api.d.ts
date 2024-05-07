@@ -19,6 +19,7 @@ import type * as delegations from "../delegations.js";
 import type * as lib_withUser from "../lib/withUser.js";
 import type * as projects from "../projects.js";
 import type * as tasks from "../tasks.js";
+import type * as users from "../users.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   "lib/withUser": typeof lib_withUser;
   projects: typeof projects;
   tasks: typeof tasks;
+  users: typeof users;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

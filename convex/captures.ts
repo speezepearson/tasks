@@ -6,7 +6,7 @@ export const create = mutationWithUser({
     text: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("captures", { text: args.text });
+    return await ctx.db.insert("captures", { owner: ctx.user._id, text: args.text });
   },
 });
 
@@ -16,7 +16,7 @@ export const list = queryWithUser({
   },
   handler: async (ctx, args) => {
     return await ctx.db.query("captures")
-      .withIndex('archivedAtMillis', q => q.eq('archivedAtMillis', undefined))
+      .withIndex('owner_archivedAtMillis', q => q.eq('owner', ctx.user._id).eq('archivedAtMillis', undefined))
       .order('desc')
       .take(args.limit);
   },
@@ -26,12 +26,11 @@ export const archive = mutationWithUser({
   args: {
     id: v.id("captures"),
   },
-  handler: async (ctx, args) => {
-    const capture = await ctx.db.get(args.id);
-    if (capture === null) {
-      throw new Error('Capture not found');
+  handler: async (ctx, { id }) => {
+    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+      throw new Error('not found');
     }
 
-    await ctx.db.patch(args.id, { archivedAtMillis: Date.now() });
+    await ctx.db.patch(id, { archivedAtMillis: Date.now() });
   },
 });

@@ -1,10 +1,10 @@
 import { SignInButton, SignOutButton } from "@clerk/clerk-react";
 import { Box, Button, Container, Stack } from "@mui/material";
-import { useConvexAuth } from "convex/react";
 import { Link, Outlet } from "react-router-dom";
+import { useStoreUserEffect } from "./useStoreUserEffect";
 
 export function Root() {
-    const { isLoading, isAuthenticated } = useConvexAuth();
+    const { isLoading, isAuthenticated } = useStoreUserEffect();
 
     return <Container maxWidth="lg" sx={{ fontFamily: 'Arial' }}>
         <header>
