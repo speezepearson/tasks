@@ -5,9 +5,10 @@ export const create = mutation({
   args: {
     text: v.string(),
     timeoutMillis: v.optional(v.number()),
+    project: v.optional(v.id("projects")),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("delegations", { text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined });
+    return await ctx.db.insert("delegations", { text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined, project: args.project });
   },
 });
 
@@ -16,9 +17,10 @@ export const update = mutation({
     id: v.id("delegations"),
     text: v.string(),
     timeoutMillis: v.optional(v.number()),
+    project: v.optional(v.id("projects")),
   },
-  handler: async (ctx, { id, text, timeoutMillis }) => {
-    await ctx.db.patch(id, { text, timeoutMillis });
+  handler: async (ctx, { id, ...fields }) => {
+    await ctx.db.patch(id, fields);
   },
 });
 

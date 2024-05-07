@@ -31,5 +31,6 @@ export default defineSchema({
     text: v.string(),
     timeoutMillis: v.optional(v.number()),
     completedAtMillis: v.optional(v.number()),
+    project: v.optional(v.id('projects')),
   }),
 });

@@ -62,8 +62,12 @@ function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     const createDelegation = useMutation(api.delegations.create);
 
     const optionsByText = useMemo(() => Map([
-        ...allTasks.map(t => [t.text, () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } })] as [string, () => Promise<null>]),
-        ...allDelegations.map(b => [b.text, () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } })] as [string, () => Promise<null>]),
+        ...allTasks
+            .filter(t => t._id !== task._id && (t.project === task.project || task.project === undefined))
+            .map(t => [t.text, () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } })] as [string, () => Promise<null>]),
+        ...allDelegations
+            .filter(d => d.project === task.project || task.project === undefined)
+            .map(b => [b.text, () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } })] as [string, () => Promise<null>]),
     ]), [allTasks, allDelegations, linkBlocker, task._id]);
 
     const [text, setText] = useState("");
@@ -83,63 +87,60 @@ function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
         }, 0);
     }, [inputRef])
 
-    return <Dialog open onClose={onHide} fullWidth>
+    const doSave = () => {
+        watchReqStatus(setReq,
+            (async () => {
+                const link = optionsByText.get(text);
+                if (link === undefined) {
+                    const timeout = guessTimeoutMillisFromText(text);
+                    if (timeout?.withoutDate.trim() === "") {
+                        await linkBlocker({
+                            id: task._id,
+                            blocker: { type: 'time', millis: timeout.timeout.getTime() },
+                        });
+                    } else {
+                        const newDelegationId = await createDelegation(
+                            timeout
+                                ? { text: timeout.withoutDate, project: task.project, timeoutMillis: timeout.timeout.getTime() }
+                                : { text, project: task.project }
+                        );
+                        await linkBlocker({
+                            id: task._id,
+                            blocker: { type: 'delegation', id: newDelegationId },
+                        });
+                    }
+                } else {
+                    await link();
+                }
+                onHide();
+            })()).catch(console.error);
+    };
+
+    return <Dialog open onClose={onHide} fullWidth PaperProps={{
+        component: 'form',
+        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
+    }}>
         <DialogTitle>Add blocker to "{task.text}"</DialogTitle>
         <DialogContent>
-            <form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    watchReqStatus(setReq,
-                        (async () => {
-                            const link = optionsByText.get(text);
-                            console.log("link", link);
-                            if (link === undefined) {
-                                const timeout = guessTimeoutMillisFromText(text);
-                                if (timeout?.withoutDate.trim() === "") {
-                                    await linkBlocker({
-                                        id: task._id,
-                                        blocker: { type: 'time', millis: timeout.timeout.getTime() },
-                                    });
-                                } else {
-                                    const newDelegationId = await createDelegation(
-                                        timeout
-                                            ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
-                                            : { text }
-                                    );
-                                    await linkBlocker({
-                                        id: task._id,
-                                        blocker: { type: 'delegation', id: newDelegationId },
-                                    });
-                                }
-                            } else {
-                                console.log("awaiting link for", text);
-                                await link();
-                            }
-                            onHide();
-                        })()).catch(console.error);
-                }}
-            >
-                <Autocomplete
-                    freeSolo
-                    ref={inputRef}
-                    autoFocus
-                    blurOnSelect={false}
-                    onBlur={onHide}
-                    size="small"
-                    sx={{ my: 1 }}
-                    options={optionsByText.keySeq().sort().toArray()}
-                    renderInput={(params) => <TextField {...params} label="Blocker" />}
-                    value={text}
-                    onChange={(_, value) => { setText(value ?? "") }}
-                />
-            </form>
+            <Autocomplete
+                freeSolo
+                ref={inputRef}
+                autoFocus
+                blurOnSelect={false}
+                size="small"
+                sx={{ my: 1 }}
+                options={optionsByText.keySeq().sort().toArray()}
+                renderInput={(params) => <TextField {...params} label="Blocker" />}
+                value={text}
+                onChange={(_, value) => { setText(value ?? "") }}
+            />
         </DialogContent>
         <DialogActions>
-            <Button variant="outlined" onClick={onHide}>
+            {/* <Button variant="outlined" onClick={onHide}>
                 Close
-            </Button>
+            </Button> */}
             <Button variant="contained" type="submit">
-                Add blocker
+                {req.type === 'working' ? 'Linking...' : 'Link blocker'}
             </Button>
         </DialogActions>
     </Dialog>;
@@ -280,7 +281,7 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
                                     {" "} {unlinkButton}
                                 </Box>
                             case "time":
-                                return <Box key="__time">
+                                return <Box key={`__time-${blocker.millis}`}>
                                     {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
                                 </Box>
@@ -467,11 +468,11 @@ export function Page() {
                     <CardContent>
                         <Box sx={{ textAlign: 'center' }}><h1> Timed Out </h1></Box>
                         <Box>
-                            {timedOutBlockers === undefined
+                            {(timedOutBlockers === undefined || projectsById === undefined)
                                 ? <Box>Loading...</Box>
                                 : timedOutBlockers
                                     .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: "1px solid gray" } }}>
-                                        <Delegation delegation={blocker} />
+                                        <Delegation delegation={blocker} projectsById={projectsById} />
                                     </Box>)}
                         </Box>
                     </CardContent>
@@ -546,12 +547,12 @@ export function Page() {
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}><h1> Delegations </h1></Box>
             <Card><CardContent>
-                {blockers === undefined
+                {blockers === undefined || projectsById === undefined
                     ? <Box>Loading...</Box>
                     : blockers
                         .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
                         .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                            <Delegation delegation={blocker} />
+                            <Delegation delegation={blocker} projectsById={projectsById} />
                         </Box>
                         )}
                 <CreateDelegationForm />
@@ -568,21 +569,25 @@ function listcmp<T>(a: T[], b: T[]): number {
     return a.length - b.length;
 }
 
-function EditDelegationModal({ delegation, onHide }: {
+function EditDelegationModal({ delegation, projectsById, onHide }: {
     delegation: Doc<'delegations'>,
+    projectsById: Map<Id<'projects'>, Doc<'projects'>>,
     onHide: () => unknown,
 }) {
     const update = useMutation(api.delegations.update);
 
+    const projectsByName = useMemo(() => projectsById.mapEntries(([, project]) => [project.name, project]), [projectsById]);
+
     const [newText, setNewText] = useState(delegation.text);
     const [newTimeoutMillis, setNewTimeoutMillis] = useState(delegation.timeoutMillis);
+    const [newProjectId, setNewProjectId] = useState(delegation.project);
 
     const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
     useEffect(() => {
         if (saveReq.type === 'error') alert(saveReq.message);
     }, [saveReq]);
 
-    const doSave = () => { watchReqStatus(setSaveReq, update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis }).then(onHide)).catch(console.error) }
+    const doSave = () => { watchReqStatus(setSaveReq, update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis, project: newProjectId }).then(onHide)).catch(console.error) }
 
     return <Dialog open fullWidth onClose={onHide} PaperProps={{
         component: 'form',
@@ -594,6 +599,18 @@ function EditDelegationModal({ delegation, onHide }: {
             <FormHelperText>You can use markdown here.</FormHelperText>
 
             <TextField sx={{ mt: 4 }} fullWidth margin="normal" label="Timeout" type="date" value={newTimeoutMillis === undefined ? '' : formatDate(new Date(newTimeoutMillis), 'yyyy-MM-dd')} onChange={(e) => { setNewTimeoutMillis(e.target.value === '' ? undefined : parseISO(e.target.value).getTime()) }} />
+
+            <Autocomplete
+                sx={{ mt: 4 }}
+                options={projectsByName.entrySeq()
+                    .sortBy(([name]) => name)
+                    .map((([name]) => name))
+                    .toList()
+                    .toArray()}
+                renderInput={(params) => <TextField {...params} label="Project" />}
+                value={newProjectId ? projectsById.get(newProjectId)!.name : null}
+                onChange={(_, projectName) => { setNewProjectId(projectName ? projectsByName.get(projectName)!._id : undefined) }}
+            />
         </DialogContent>
 
         <DialogActions>
@@ -608,14 +625,15 @@ function EditDelegationModal({ delegation, onHide }: {
     </Dialog>;
 }
 
-function Delegation({ delegation }: { delegation: Doc<'delegations'> }) {
+function Delegation({ delegation, projectsById }: { delegation: Doc<'delegations'>, projectsById: Map<Id<'projects'>, Doc<'projects'>> }) {
     const setCompleted = useMutation(api.delegations.setCompleted);
 
     const [editing, setEditing] = useState(false);
 
-    return <Stack direction="row">
+    return <Stack direction="row" sx={{ backgroundColor: delegation.project && projectsById.get(delegation.project)?.color }}>
         {editing && <EditDelegationModal
             delegation={delegation}
+            projectsById={projectsById}
             onHide={() => { setEditing(false) }}
         />}
         <Checkbox
@@ -625,9 +643,8 @@ function Delegation({ delegation }: { delegation: Doc<'delegations'> }) {
         />
         <Box sx={{ ml: 1, flexGrow: 1 }} role="button" onClick={() => { setEditing(true) }}>
             <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
-            {" "}
-            {delegation.timeoutMillis !== undefined && <Typography sx={{ color: 'gray' }}>(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</Typography>}
         </Box>
+        {delegation.timeoutMillis !== undefined && <Typography sx={{ color: 'gray' }}>(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</Typography>}
     </Stack>
 }
 
