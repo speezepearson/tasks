@@ -22,9 +22,9 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     useEffect(() => {
         if (justCreated) {
             setJustCreated(false);
-            inputRef.current?.focus();
+            inputRef.current?.getElementsByTagName('input')[0].focus();
         }
-    }, [justCreated]);
+    }, [justCreated, inputRef]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
