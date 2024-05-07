@@ -4,7 +4,7 @@ import { v } from "convex/values";
 export const create = mutation({
   args: {
     text: v.string(),
-    timeoutMillis: v.optional(v.number()),
+    timeoutMillis: v.number(),
     project: v.optional(v.id("projects")),
   },
   handler: async (ctx, args) => {

@@ -29,7 +29,7 @@ export default defineSchema({
 
   delegations: defineTable({
     text: v.string(),
-    timeoutMillis: v.optional(v.number()),
+    timeoutMillis: v.number(),
     completedAtMillis: v.optional(v.number()),
     project: v.optional(v.id('projects')),
   }),

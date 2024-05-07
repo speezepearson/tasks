@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { ReqStatus, textMatches, useNow, watchReqStatus } from "../common";
-import { formatDate, parseISO } from "date-fns";
+import { addDays, formatDate, parseISO } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
 import { Inbox } from "../Inbox";
 import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Autocomplete, Box, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormHelperText, Grid, InputLabel, Stack, TextField, Typography } from "@mui/material";
@@ -46,9 +46,11 @@ function guessTimeoutMillisFromText(text: string): { withoutDate: string; timeou
     const regexp = /(\d{4}-\d{2}-\d{2})$/;
     const dateMatch = text.match(regexp);
     if (dateMatch === null) return undefined;
+    const timeoutMillis = parseISOMillis(dateMatch[1]);
+    if (timeoutMillis === undefined) return undefined;
     return {
         withoutDate: text.replace(regexp, ''),
-        timeout: parseISO(dateMatch[1]),
+        timeout: new Date(timeoutMillis),
     };
 }
 
@@ -93,16 +95,17 @@ function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                 const link = optionsByText.get(text);
                 if (link === undefined) {
                     const timeout = guessTimeoutMillisFromText(text);
-                    if (timeout?.withoutDate.trim() === "") {
+                    if (timeout === undefined) {
+                        throw new Error("unable to guess your new delegation's timeout date; end your text with a date like '2022-12-31'");
+                    }
+                    if (timeout.withoutDate.trim() === "") {
                         await linkBlocker({
                             id: task._id,
                             blocker: { type: 'time', millis: timeout.timeout.getTime() },
                         });
                     } else {
                         const newDelegationId = await createDelegation(
-                            timeout
-                                ? { text: timeout.withoutDate, project: task.project, timeoutMillis: timeout.timeout.getTime() }
-                                : { text, project: task.project }
+                            { text: timeout.withoutDate, project: task.project, timeoutMillis: timeout.timeout.getTime() }
                         );
                         await linkBlocker({
                             id: task._id,
@@ -598,7 +601,14 @@ function EditDelegationModal({ delegation, projectsById, onHide }: {
             <TextField fullWidth autoFocus margin="normal" label="Text" type="text" value={newText} onChange={(e) => { setNewText(e.target.value) }} />
             <FormHelperText>You can use markdown here.</FormHelperText>
 
-            <TextField sx={{ mt: 4 }} fullWidth margin="normal" label="Timeout" type="date" value={newTimeoutMillis === undefined ? '' : formatDate(new Date(newTimeoutMillis), 'yyyy-MM-dd')} onChange={(e) => { setNewTimeoutMillis(e.target.value === '' ? undefined : parseISO(e.target.value).getTime()) }} />
+            <TextField sx={{ mt: 4 }} fullWidth margin="normal" label="Timeout"
+                type="date"
+                value={formatDate(newTimeoutMillis, 'yyyy-MM-dd')}
+                onChange={(e) => {
+                    const timeoutMillis = parseISOMillis(e.target.value);
+                    if (timeoutMillis !== undefined) setNewTimeoutMillis(timeoutMillis);
+                }}
+            />
 
             <Autocomplete
                 sx={{ mt: 4 }}
@@ -651,7 +661,7 @@ function Delegation({ delegation, projectsById }: { delegation: Doc<'delegations
 function CreateDelegationForm() {
     const createDelegation = useMutation(api.delegations.create);
     const [text, setText] = useState("");
-    const [timeout, setTimeout] = useState(formatDate(new Date(), 'yyyy-MM-dd'));
+    const [timeoutMillis, setTimeoutMillis] = useState(parseISOMillis(formatDate(addDays(new Date(), 1), 'yyyy-MM-dd'))!);
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
     useEffect(() => {
         if (req.type === 'error') alert(req.message);
@@ -661,23 +671,38 @@ function CreateDelegationForm() {
         e.preventDefault();
         if (req.type === 'working') return;
         watchReqStatus(setReq, (async () => {
-            await createDelegation({ text, timeoutMillis: timeout ? parseISO(timeout).getTime() : undefined });
+            await createDelegation({ text, timeoutMillis });
             setText("");
-            setTimeout("");
         })()).catch(console.error);
     }}>
         <Stack direction="row">
             <TextField size="small" sx={{ flexGrow: 1 }} value={text} onChange={(e) => {
                 const timeout = guessTimeoutMillisFromText(e.target.value);
                 if (timeout) {
-                    setTimeout(formatDate(timeout.timeout, 'yyyy-MM-dd'));
+                    setTimeoutMillis(timeout.timeout.getTime());
                     setText(timeout.withoutDate);
                 } else {
                     setText(e.target.value);
                 }
             }} placeholder="New delegation text" />
-            <TextField size="small" type="date" style={{ maxWidth: '10em' }} value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
+            <TextField size="small" type="date" style={{ maxWidth: '10em' }}
+                value={formatDate(timeoutMillis, 'yyyy-MM-dd')}
+                onChange={(e) => {
+                    const timeoutMillis = parseISOMillis(e.target.value);
+                    if (timeoutMillis !== undefined) setTimeoutMillis(timeoutMillis);
+                }} placeholder="timeout"
+            />
             <Button size="small" variant="contained" type="submit">+delegation</Button>
         </Stack>
     </form>
+}
+
+function parseISOMillis(date: string): number | undefined {
+    try {
+        const res = parseISO(date).getTime();
+        if (isNaN(res)) return undefined;
+        return res;
+    } catch (e) {
+        return undefined;
+    }
 }
