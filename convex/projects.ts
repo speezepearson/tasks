@@ -11,6 +11,13 @@ export const create = mutation({
   },
 });
 
+export const archive = mutation({
+  args: { id: v.id("projects") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { archivedAtMillis: Date.now() });
+  },
+});
+
 export const update = mutation({
   args: {
     id: v.id("projects"),
@@ -32,6 +39,6 @@ export const get = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("projects").collect();
+    return await ctx.db.query("projects").withIndex('archivedAtMillis', q => q.eq('archivedAtMillis', undefined)).collect();
   },
 });

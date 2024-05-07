@@ -17,14 +17,21 @@ export function CreateProjectForm() {
         if (req.type === 'error') alert(req.message);
     }, [req]);
 
-    const doSave = () => { watchReqStatus(setReq, create({ name: name, color: color }).then(() => { setShowModal(false) })).catch(console.error) }
+    const doSave = () => {
+        watchReqStatus(setReq, (async () => {
+            await create({ name: name, color: color });
+            setShowModal(false);
+            setColor(randomLightColor());
+        })()).catch(console.error)
+    }
 
     return <>
         {showModal && <Dialog open fullWidth onClose={() => { setShowModal(false) }} PaperProps={{
             component: 'form',
             onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
-
-        }}>
+        }}
+            disableRestoreFocus // HACK: autofocus doesn't work without this: https://github.com/mui/material-ui/issues/33004
+        >
             <DialogTitle>Edit project</DialogTitle>
             <DialogContent>
                 <TextField margin="normal" fullWidth autoFocus label="Project name" type="text" value={name} onChange={(e) => { setName(e.target.value) }} />

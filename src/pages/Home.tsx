@@ -381,6 +381,12 @@ function ProjectCard({
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
 }) {
 
+    const archive = useMutation(api.projects.archive);
+    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
+
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const [editing, setEditing] = useState(false);
 
@@ -414,6 +420,9 @@ function ProjectCard({
                 )}
             </AccordionDetails>
             <AccordionActions>
+                <Button size="small" onClick={() => {
+                    watchReqStatus(setReq, archive({ id: project!._id })).catch(console.error)
+                }}>Archive Project</Button>
                 <Button size="small" onClick={() => { setEditing(true) }}>Edit Project</Button>
             </AccordionActions>
         </Accordion>
@@ -434,6 +443,7 @@ export function Page() {
         });
         if (!res.has(undefined)) res = res.set(undefined, List());
         return res.entrySeq()
+            .filter(([p]) => p?.archivedAtMillis === undefined)
             .sortBy(([p, pt]) => [
                 p === undefined, // towards the end if p is 'misc'
                 pt.isEmpty(), // towards the end if there are no tasks

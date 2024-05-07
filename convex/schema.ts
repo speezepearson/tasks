@@ -11,7 +11,10 @@ export default defineSchema({
   projects: defineTable({
     name: v.string(),
     color: v.optional(v.string()),
-  }),
+    archivedAtMillis: v.optional(v.number()),
+  })
+    .index('archivedAtMillis', ['archivedAtMillis'])
+  ,
 
   captures: defineTable({
     text: v.string(),
