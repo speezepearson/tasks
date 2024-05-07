@@ -1,15 +1,15 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { AutocompletingInput } from "../AutocompletingInput";
 import { ReqStatus, textMatches, useNow, watchReqStatus } from "../common";
-import { CreateProjectForm } from "../CreateProjectForm";
 import { formatDate, parseISO } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
-import { Button, Form, Modal } from "react-bootstrap";
 import { Inbox } from "../Inbox";
+import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Autocomplete, Box, Button, Card, CardContent, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormHelperText, Grid, InputLabel, Stack, TextField, Typography } from "@mui/material";
+import { CreateProjectForm } from "../CreateProjectForm";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
     const createTask = useMutation(api.tasks.create);
@@ -35,10 +35,10 @@ function CreateTaskForm({ project }: { project?: Doc<'projects'> }) {
             setJustCreated(true);
         })()).catch(console.error);
     }}>
-        <div className="d-flex flex-row">
-            <input className="form-control form-control-sm d-inline-block" ref={inputRef} disabled={req.type === 'working'} value={text} onChange={(e) => { setText(e.target.value) }} placeholder="new task text" />
-            <button className="btn btn-sm btn-primary ms-1" disabled={req.type === 'working'} type="submit">+task</button>
-        </div>
+        <Stack direction="row">
+            <TextField size="small" sx={{ flexGrow: 1 }} ref={inputRef} disabled={req.type === 'working'} value={text} onChange={(e) => { setText(e.target.value) }} label="New task text" />
+            <Button sx={{ ml: 1 }} variant="contained" size="small" disabled={req.type === 'working'} disableRipple type="submit">+task</Button>
+        </Stack>
     </form>
 }
 
@@ -60,42 +60,59 @@ function AddBlockerForm({ task, allTasks, allDelegations }: {
     const linkBlocker = useMutation(api.tasks.linkBlocker);
     const createDelegation = useMutation(api.delegations.create);
 
-    const options = useMemo(() => List([
-        ...allTasks.map(t => ({ id: t._id, text: t.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } }) })),
-        ...allDelegations.map(b => ({ id: b._id, text: b.text, link: () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } }) })),
+    const optionsByText = useMemo(() => Map([
+        ...allTasks.map(t => [t.text, () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } })] as [string, () => Promise<null>]),
+        ...allDelegations.map(b => [b.text, () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } })] as [string, () => Promise<null>]),
     ]), [allTasks, allDelegations, linkBlocker, task._id]);
-    const render = useCallback((x: { text: string }) => x.text, []);
+
+    const [text, setText] = useState("");
+    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
 
     const [showInput, setShowInput] = useState(false);
 
-    return showInput
-        ? <AutocompletingInput
-            options={options}
-            render={render}
-            onSubmit={async (val) => {
-                switch (val.type) {
-                    case "raw":
-                        await (async () => {
-                            const timeout = guessTimeoutMillisFromText(val.text);
+    return <>{showInput
+        ? <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                watchReqStatus(setReq,
+                    (async () => {
+                        const link = optionsByText.get(text);
+                        if (link === undefined) {
+                            const timeout = guessTimeoutMillisFromText(text);
                             const newDelegationId = await createDelegation(
                                 timeout
                                     ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
-                                    : { text: val.text }
+                                    : { text }
                             );
                             await linkBlocker({
                                 id: task._id,
                                 blocker: { type: 'delegation', id: newDelegationId },
                             });
-                        })();
-                        break;
-                    case "option":
-                        await val.value.link();
-                        break;
-                }
+                        } else {
+                            console.log("awaiting link for", text);
+                            await link();
+                        }
+                        setShowInput(false);
+                    })()).catch(console.error);
             }}
-            onCancel={() => { setShowInput(false) }}
-        />
-        : <button className="btn btn-sm btn-outline-secondary py-0" onClick={() => { setShowInput(true) }}>+blocker</button>;
+        >
+            <Autocomplete
+                freeSolo
+                blurOnSelect={false}
+                onBlur={() => { setShowInput(false) }}
+                size="small"
+                options={optionsByText.keySeq().sort().toArray()}
+                renderInput={(params) => <TextField {...params} label="Blocker" />}
+                value={text}
+                onChange={(_, value) => { setText(value ?? "") }}
+            />
+        </form>
+        : <Button size="small" variant="outlined" sx={{ py: 0 }} onClick={() => { setShowInput(true) }}>+blocker</Button>
+    }
+    </>
 }
 
 function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
@@ -123,6 +140,8 @@ function EditTaskModal({ task, projectsById, onHide }: {
 }) {
     const update = useMutation(api.tasks.update);
 
+    const projectsByName = useMemo(() => projectsById.mapEntries(([, project]) => [project.name, project]), [projectsById]);
+
     const [newText, setNewText] = useState(task.text);
     const [newProjectId, setNewProjectId] = useState(task.project);
 
@@ -133,50 +152,40 @@ function EditTaskModal({ task, projectsById, onHide }: {
 
     const doSave = () => { watchReqStatus(setSaveReq, update({ id: task._id, text: newText, project: newProjectId }).then(onHide)).catch(console.error) }
 
-    return <Modal show onHide={onHide}>
-        <Modal.Header closeButton>
-            <Modal.Title>Edit task</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-            <Form onSubmit={e => { e.preventDefault(); doSave() }}>
+    return <Dialog open onClose={onHide} fullWidth PaperProps={{
+        component: 'form',
+        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
+    }}>
+        <DialogTitle>Edit task</DialogTitle>
+        <DialogContent>
+            <FormControl fullWidth>
+                <TextField autoFocus margin="normal" label="Task text" type="text" value={newText} onChange={(e) => { setNewText(e.target.value) }} />
+                <FormHelperText>You can use markdown here.</FormHelperText>
+            </FormControl>
 
-                <Form.Group className="mb-3">
-                    <Form.Label>Task text</Form.Label>
-                    <Form.Control
-                        autoFocus
-                        type="text"
-                        value={newText}
-                        onChange={(e) => { setNewText(e.target.value) }}
-                    />
-                    <Form.Text className="text-muted">
-                        You can use markdown here.
-                    </Form.Text>
-                </Form.Group>
+            <Autocomplete
+                sx={{ mt: 4 }}
+                options={projectsByName.entrySeq()
+                    .sortBy(([name]) => name)
+                    .map((([name]) => name))
+                    .toList()
+                    .toArray()}
+                renderInput={(params) => <TextField {...params} label="Project" />}
+                value={newProjectId ? projectsById.get(newProjectId)!.name : null}
+                onChange={(_, projectName) => { setNewProjectId(projectName ? projectsByName.get(projectName)!._id : undefined) }}
+            />
+        </DialogContent>
 
-                <Form.Group className="mb-3">
-                    <Form.Label>Project</Form.Label>
-                    <Form.Select
-                        value={newProjectId}
-                        onChange={(e) => { setNewProjectId(e.target.value === '' ? undefined : (e.target.value as Id<'projects'>)) }}
-                    >
-                        <option value="">(none)</option>
-                        {projectsById.entrySeq()
-                            .sortBy(([, project]) => project.name)
-                            .map(([id, project]) => <option key={id} value={id}>{project.name}</option>)}
-                    </Form.Select>
-                </Form.Group>
-
-            </Form>
-        </Modal.Body>
-        <Modal.Footer>
-            <Button variant="outline-secondary" onClick={onHide}>
+        <DialogActions>
+            <Button variant="outlined" onClick={onHide}>
                 Close
             </Button>
-            <Button variant="primary" onClick={doSave}>
+
+            <Button variant="contained" type="submit">
                 {saveReq.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
-        </Modal.Footer>
-    </Modal>
+        </DialogActions>
+    </Dialog>
 }
 
 function Task({ task, projectsById, tasksById, delegationsById: delegationsById }: {
@@ -199,16 +208,14 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
     const blocked = outstandingBlockers.size > 0;
-    return <div>
+    return <Box>
         {editing && <EditTaskModal
             task={task}
             projectsById={projectsById}
             onHide={() => { setEditing(false) }}
         />}
-        <div className="d-flex flex-row">
-            <input
-                className="align-self-start mt-1"
-                type="checkbox"
+        <Stack direction="row" alignItems="center">
+            <Checkbox
                 checked={task.completedAtMillis !== undefined}
                 onChange={(e) => {
                     if (req.type === 'working') return;
@@ -218,40 +225,36 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
                 style={{ width: '1em', height: '1em' }}
                 disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
             {" "}
-            <div className={`ms-1 overflow-hidden text-truncate flex-grow-1 ${blocked ? "text-muted" : ""}`}
+            <Typography noWrap sx={{ ml: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
                 role="button"
                 onClick={() => { setEditing(true) }}
             >
                 <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
-            </div>
-            <div className="ms-auto"></div>
-            <div className="align-self-start">
-                <AddBlockerForm task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />
-            </div>
-        </div>
+            </Typography>
+            <AddBlockerForm task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />
+        </Stack>
         {blocked
-            && <div className="ms-4">
+            && <Box sx={{ ml: 4 }}>
                 blocked on:
-                <div className="ms-4">
+                <Box sx={{ ml: 2 }}>
                     {outstandingBlockers.map((blocker) => {
-                        const unlinkButton = <button
-                            className="btn btn-sm btn-outline-secondary py-0"
-                            onClick={() => { unlinkBlocker({ id: task._id, blocker }).catch(console.error) }}>-</button>;
+                        const unlinkButton = <Button
+                            size="small" sx={{ py: 0 }} variant="outlined"
+                            onClick={() => { unlinkBlocker({ id: task._id, blocker }).catch(console.error) }}>unlink</Button>;
                         switch (blocker.type) {
                             case "task":
-                                return <div key={blocker.id}>
+                                return <Box key={blocker.id}>
                                     <SingleLineMarkdown>{tasksById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
-                                </div>
+                                </Box>
                             case "time":
-                                return <div key="__time">
+                                return <Box key="__time">
                                     {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
-                                </div>
+                                </Box>
                             case "delegation":
-                                return <div key={blocker.id}>
-                                    <input
-                                        type="checkbox"
+                                return <Box key={blocker.id}>
+                                    <Checkbox
                                         checked={delegationsById.get(blocker.id)!.completedAtMillis !== undefined}
                                         onChange={(e) => { setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error) }}
                                         style={{ width: '1em', height: '1em' }}
@@ -259,13 +262,13 @@ function Task({ task, projectsById, tasksById, delegationsById: delegationsById 
                                     {" "}
                                     <SingleLineMarkdown>{delegationsById.get(blocker.id)!.text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
-                                </div>
+                                </Box>
                         }
                     })}
-                </div>
-            </div>
+                </Box>
+            </Box>
         }
-    </div>
+    </Box>
 }
 
 function mapundef<T, U>(x: T | undefined, f: (x: T) => U): U | undefined {
@@ -295,46 +298,37 @@ function EditProjectModal({ project, onHide }: {
 
     const doSave = () => { watchReqStatus(setSaveReq, update({ id: project._id, name: newName, color: newColor }).then(onHide)).catch(console.error) }
 
-    return <Modal show onHide={onHide}>
-        <Modal.Header closeButton>
-            <Modal.Title>Edit project</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ backgroundColor: newColor }}>
-            <Form onSubmit={e => { e.preventDefault(); doSave() }}>
+    return <Dialog open fullWidth onClose={onHide} PaperProps={{
+        component: 'form',
+        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
 
-                <Form.Group className="mb-3">
-                    <Form.Label>Project name</Form.Label>
-                    <Form.Control
-                        autoFocus
-                        type="text"
-                        value={newName}
-                        onChange={(e) => { setNewName(e.target.value) }}
-                    />
-                    <Form.Text className="text-muted">
-                        You can use markdown here.
-                    </Form.Text>
-                </Form.Group>
+    }}>
+        <DialogTitle>Edit project</DialogTitle>
+        <DialogContent>
+            <TextField margin="normal" fullWidth autoFocus label="Project name" type="text" value={newName} onChange={(e) => { setNewName(e.target.value) }} />
 
-                <Form.Group className="mb-3">
-                    <Form.Label>Color</Form.Label>
-                    <Form.Control
-                        type="color"
-                        value={newColor}
-                        onChange={(e) => { setNewColor(e.target.value) }}
-                    />
-                </Form.Group>
+            <FormControl sx={{ mt: 4 }}>
+                <InputLabel>Color</InputLabel>
+                <TextField
+                    type="color"
+                    margin="normal"
+                    sx={{ minWidth: "5em", height: "2em" }}
+                    value={newColor}
+                    onChange={(e) => { setNewColor(e.target.value) }}
+                />
+            </FormControl>
+        </DialogContent >
 
-            </Form>
-        </Modal.Body>
-        <Modal.Footer>
-            <Button variant="outline-secondary" onClick={onHide}>
+        <DialogActions>
+            <Button variant="outlined" onClick={onHide}>
                 Close
             </Button>
-            <Button variant="primary" onClick={doSave}>
+
+            <Button variant="contained" type="submit">
                 {saveReq.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
-        </Modal.Footer>
-    </Modal>
+        </DialogActions>
+    </Dialog>;
 }
 
 function ProjectCard({
@@ -351,37 +345,43 @@ function ProjectCard({
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>,
 }) {
 
+    const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const [editing, setEditing] = useState(false);
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
-    return <details open={!projectTasks.isEmpty()} className="card p-2" style={project?.color ? { backgroundColor: project.color } : {}}>
-        <summary>
-            <div className="fs-5 d-inline-block" role="button" onClick={(e) => { e.preventDefault(); setEditing(true) }}>
-                {project === undefined
-                    ? "(misc)"
-                    : project.name
-                }
-            </div>
-        </summary>
+    return <>
         {editing && <EditProjectModal
             project={project!}
             onHide={() => { setEditing(false) }}
         />}
-        <div className="ms-4">
-            <div className="py-1"><CreateTaskForm project={project} /></div>
-            {showTasks.map((task) =>
-                <div key={task._id} className="" >
-                    <Task
-                        task={task}
-                        projectsById={projectsById}
-                        tasksById={tasksById}
-                        delegationsById={delegationsById}
-                    />
-                </div>
-            )}
-        </div>
-    </details>;
+        <Accordion sx={{ backgroundColor: project?.color ?? 'none' }} expanded={expanded}>
+            <AccordionSummary onClick={() => { setExpanded(!expanded) }} expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">
+                    {project === undefined
+                        ? "(misc)"
+                        : project.name
+                    }
+                </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                <CreateTaskForm project={project} />
+                {showTasks.map((task) =>
+                    <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                        <Task
+                            task={task}
+                            projectsById={projectsById}
+                            tasksById={tasksById}
+                            delegationsById={delegationsById}
+                        />
+                    </Box>
+                )}
+            </AccordionDetails>
+            <AccordionActions>
+                <Button size="small" onClick={() => { setEditing(true) }}>Edit Project</Button>
+            </AccordionActions>
+        </Accordion>
+    </>;
 }
 
 export function Page() {
@@ -424,47 +424,48 @@ export function Page() {
         [blockers, now],
     );
 
-    return <div>
-
-        <div className="row">
-            <div className="col-md">
-                <h1 className="text-center">Inbox</h1>
+    return <Stack direction="column">
+        <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
                 <Inbox />
-            </div>
-            <div className="col-md">
-                <h1 className="text-center"> Timed Out </h1>
-                <div className="card p-2">
-                    <div className="ms-4">
-                        {timedOutBlockers === undefined
-                            ? <div>Loading...</div>
-                            : timedOutBlockers
-                                .map((blocker) => <div key={blocker._id}>
-                                    <Delegation delegation={blocker} />
-                                </div>)}
-                    </div>
-                </div>
-            </div>
-        </div>
+            </Grid>
 
-        <div className="mt-4">
-            <div className="text-center">
+            <Grid item xs={12} sm={6}>
+                <Card>
+                    <CardContent>
+                        <Box sx={{ textAlign: 'center' }}><h1> Timed Out </h1></Box>
+                        <Box>
+                            {timedOutBlockers === undefined
+                                ? <Box>Loading...</Box>
+                                : timedOutBlockers
+                                    .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: "1px solid gray" } }}>
+                                        <Delegation delegation={blocker} />
+                                    </Box>)}
+                        </Box>
+                    </CardContent>
+                </Card>
+            </Grid>
+        </Grid>
+
+        <Box sx={{ mt: 4 }}>
+            <Box sx={{ textAlign: 'center' }}>
                 <h1>Next Actions</h1>
-                <input
-                    className="form-control form-control-sm d-inline-block"
+                <TextField
+                    size="small"
                     value={nextActionFilterField}
                     onChange={(e) => { setNextActionFilterField(e.target.value) }}
-                    placeholder="filter"
+                    label="filter"
                     style={{ maxWidth: '10em' }}
                 />
-            </div>
-            <div className="mt-1">
+            </Box>
+            <Box>
                 {(tasksGroupedByProject === undefined
                     || outstandingBlockers === undefined
                     || projectsById === undefined
                     || tasksById === undefined
                     || delegationsById === undefined
                 )
-                    ? <div>Loading...</div>
+                    ? <Box>Loading...</Box>
                     : tasksGroupedByProject
                         .map(([p, projectTasks]) => (
                             <ProjectCard
@@ -480,20 +481,21 @@ export function Page() {
                                 delegationsById={delegationsById}
                             />
                         ))}
-            </div>
-        </div>
+            </Box>
+        </Box>
 
-        <div className="mt-4">
-            <div className="text-center">
+        <Box sx={{ mt: 4 }}>
+            <Box sx={{ textAlign: 'center' }}>
                 <h1>Projects</h1>
-            </div>
+                <CreateProjectForm />
+            </Box>
             {(tasksGroupedByProject === undefined
                 || outstandingBlockers === undefined
                 || projectsById === undefined
                 || tasksById === undefined
                 || delegationsById === undefined
             )
-                ? <div>Loading...</div>
+                ? <Box>Loading...</Box>
                 : tasksGroupedByProject
                     .map(([project, projectTasks]) => (
                         <ProjectCard
@@ -505,29 +507,23 @@ export function Page() {
                             delegationsById={delegationsById}
                         />
                     ))}
-            <div className="text-center mt-2">
-                <CreateProjectForm />
-            </div>
-        </div>
+        </Box>
 
-        <div className="mt-4">
-            <h1 className="text-center"> Delegations </h1>
-            <div className="card p-2">
-                <div className="ms-4">
-                    {blockers === undefined
-                        ? <div>Loading...</div>
-                        : blockers
-                            .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
-                            .map((blocker) => <div key={blocker._id}>
-                                <Delegation delegation={blocker} />
-                            </div>)}
-                    <div>
-                        <CreateDelegationForm />
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        <Box sx={{ mt: 4 }}>
+            <Box sx={{ textAlign: 'center' }}><h1> Delegations </h1></Box>
+            <Card><CardContent>
+                {blockers === undefined
+                    ? <Box>Loading...</Box>
+                    : blockers
+                        .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
+                        .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                            <Delegation delegation={blocker} />
+                        </Box>
+                        )}
+                <CreateDelegationForm />
+            </CardContent></Card>
+        </Box>
+    </Stack>
 }
 
 function listcmp<T>(a: T[], b: T[]): number {
@@ -554,76 +550,51 @@ function EditDelegationModal({ delegation, onHide }: {
 
     const doSave = () => { watchReqStatus(setSaveReq, update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis }).then(onHide)).catch(console.error) }
 
-    return <Modal show onHide={onHide}>
-        <Modal.Header closeButton>
-            <Modal.Title>Edit delegation</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-            <Form onSubmit={e => { console.log('submitting'); e.preventDefault(); doSave() }}>
+    return <Dialog open fullWidth onClose={onHide} PaperProps={{
+        component: 'form',
+        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
+    }}>
+        <DialogTitle>Edit delegation</DialogTitle>
+        <DialogContent>
+            <TextField fullWidth autoFocus margin="normal" label="Text" type="text" value={newText} onChange={(e) => { setNewText(e.target.value) }} />
+            <FormHelperText>You can use markdown here.</FormHelperText>
 
-                <Form.Group className="mb-3">
-                    <Form.Label>Text</Form.Label>
-                    <Form.Control
-                        autoFocus
-                        type="text"
-                        value={newText}
-                        onChange={(e) => { setNewText(e.target.value) }}
-                    />
-                    <Form.Text className="text-muted">
-                        You can use markdown here.
-                    </Form.Text>
-                </Form.Group>
+            <TextField sx={{ mt: 4 }} fullWidth margin="normal" label="Timeout" type="date" value={newTimeoutMillis === undefined ? '' : formatDate(new Date(newTimeoutMillis), 'yyyy-MM-dd')} onChange={(e) => { setNewTimeoutMillis(e.target.value === '' ? undefined : parseISO(e.target.value).getTime()) }} />
+        </DialogContent>
 
-                <Form.Group className="mb-3">
-                    <Form.Label>Timeout</Form.Label>
-                    <Form.Control
-                        type="date"
-                        value={newTimeoutMillis === undefined ? '' : formatDate(new Date(newTimeoutMillis), 'yyyy-MM-dd')}
-                        onChange={(e) => { setNewTimeoutMillis(e.target.value === '' ? undefined : parseISO(e.target.value).getTime()) }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); doSave() } }} // not sure why this is necessary, as opposed to it triggering a Submit naturally
-                    />
-                </Form.Group>
-
-            </Form>
-        </Modal.Body>
-        <Modal.Footer>
-            <Button variant="outline-secondary" onClick={onHide}>
+        <DialogActions>
+            <Button variant="outlined" onClick={onHide}>
                 Close
             </Button>
-            <Button variant="primary" onClick={doSave}>
+
+            <Button variant="contained" type="submit">
                 {saveReq.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
-        </Modal.Footer>
-    </Modal>
+        </DialogActions>
+    </Dialog>;
 }
 
 function Delegation({ delegation }: { delegation: Doc<'delegations'> }) {
     const setCompleted = useMutation(api.delegations.setCompleted);
-    const now = useNow();
 
     const [editing, setEditing] = useState(false);
 
-    return <div className="d-flex flex-row">
+    return <Stack direction="row">
         {editing && <EditDelegationModal
             delegation={delegation}
             onHide={() => { setEditing(false) }}
         />}
-        <div>
-            <input
-                type="checkbox"
-                checked={delegation.completedAtMillis !== undefined}
-                onChange={(e) => { setCompleted({ id: delegation._id, isCompleted: e.target.checked }).catch(console.error) }}
-                style={{ width: '1em', height: '1em' }}
-            />
-        </div>
-        <div className="ms-1 flex-grow-1" role="button" onClick={() => { setEditing(true) }}>
-            {delegation.completedAtMillis === undefined && delegation.timeoutMillis && delegation.timeoutMillis < now.getTime() &&
-                <span className="text-danger">TIMED OUT: </span>}
+        <Checkbox
+            checked={delegation.completedAtMillis !== undefined}
+            onChange={(e) => { setCompleted({ id: delegation._id, isCompleted: e.target.checked }).catch(console.error) }}
+            style={{ width: '1em', height: '1em' }}
+        />
+        <Box sx={{ ml: 1, flexGrow: 1 }} role="button" onClick={() => { setEditing(true) }}>
             <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
             {" "}
-            {delegation.timeoutMillis !== undefined && <span className="text-muted">(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</span>}
-        </div>
-    </div>
+            {delegation.timeoutMillis !== undefined && <Typography sx={{ color: 'gray' }}>(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</Typography>}
+        </Box>
+    </Stack>
 }
 
 function CreateDelegationForm() {
@@ -644,8 +615,8 @@ function CreateDelegationForm() {
             setTimeout("");
         })()).catch(console.error);
     }}>
-        <div className="d-flex flex-row">
-            <input className="form-control form-control-sm d-inline-block" value={text} onChange={(e) => {
+        <Stack direction="row">
+            <TextField size="small" sx={{ flexGrow: 1 }} value={text} onChange={(e) => {
                 const timeout = guessTimeoutMillisFromText(e.target.value);
                 if (timeout) {
                     setTimeout(formatDate(timeout.timeout, 'yyyy-MM-dd'));
@@ -653,9 +624,9 @@ function CreateDelegationForm() {
                 } else {
                     setText(e.target.value);
                 }
-            }} placeholder="new blocker text" />
-            <input className="form-control form-control-sm d-inline-block ms-1" type="date" style={{ maxWidth: '10em' }} value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
-            <button className="btn btn-sm btn-primary ms-1" type="submit">+blocker</button>
-        </div>
+            }} placeholder="New delegation text" />
+            <TextField size="small" type="date" style={{ maxWidth: '10em' }} value={timeout} onChange={(e) => { setTimeout(e.target.value) }} placeholder="timeout" />
+            <Button size="small" variant="contained" type="submit">+delegation</Button>
+        </Stack>
     </form>
 }

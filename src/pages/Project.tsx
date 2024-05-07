@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
 import { useLocation } from "react-router-dom";
+import Box from "@mui/material/Box";
 
 export interface Props {
     id: Id<'projects'>;
@@ -18,7 +19,7 @@ export function Page({ id }: Props) {
     const project = taskQ ?? locationState?.project;
 
     if (project === undefined) {
-        return <div>Loading...</div>
+        return <Box>Loading...</Box>
     }
 
     return (

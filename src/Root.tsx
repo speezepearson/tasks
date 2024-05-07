@@ -1,16 +1,19 @@
+import { Box, Container, Stack } from "@mui/material";
 import { Link, Outlet } from "react-router-dom";
 
 export function Root() {
-    return <>
+    return <Container maxWidth="lg" sx={{ fontFamily: 'Arial' }}>
         <header>
-            <Link to="/">Home</Link>
-            <Link className="ms-2" to="/add">Quick Capture</Link>
+            <Stack direction="row" alignItems="center">
+                <Box><Link to="/">Home</Link></Box>
+                <Box sx={{ ml: 2 }}><Link to="/add">Quick Capture</Link></Box>
+            </Stack>
         </header>
-        <main className="container">
+        <main>
             <Outlet />
         </main>
         <footer>
             {/* footer stuff */}
         </footer>
-    </>
+    </Container>
 }
