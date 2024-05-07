@@ -70,7 +70,7 @@ function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
         ...allDelegations
             .filter(d => d.project === task.project || task.project === undefined)
             .map(b => [b.text, () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } })] as [string, () => Promise<null>]),
-    ]), [allTasks, allDelegations, linkBlocker, task._id]);
+    ]), [allTasks, allDelegations, linkBlocker, task]);
 
     const [text, setText] = useState("");
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
@@ -123,7 +123,7 @@ function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
         component: 'form',
         onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
     }}>
-        <DialogTitle>Add blocker to "{task.text}"</DialogTitle>
+        <DialogTitle>Add blocker to {'"'}{task.text}{'"'}</DialogTitle>
         <DialogContent>
             <Autocomplete
                 freeSolo
@@ -664,7 +664,7 @@ function Delegation({ delegation, projectsById }: { delegation: Doc<'delegations
         <Box sx={{ ml: 1, flexGrow: 1 }} role="button" onClick={() => { setEditing(true) }}>
             <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
         </Box>
-        {delegation.timeoutMillis !== undefined && <Typography sx={{ color: 'gray' }}>(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</Typography>}
+        <Typography sx={{ color: 'gray' }}>(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</Typography>
     </Stack>
 }
 
