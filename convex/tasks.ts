@@ -76,6 +76,30 @@ export const linkBlocker = mutation({
     if (task.blockers.some((b) => blockersEqual(b, blocker))) {
       throw new Error('Blocker already linked');
     }
+    switch (blocker.type) {
+      case 'task':
+        await (async () => {
+          const b = await ctx.db.get(blocker.id);
+          if (b === null) {
+            throw new Error('Blocker task does not exist');
+          }
+          if (task.project !== undefined && b.project !== task.project) {
+            throw new Error('Blocker task is in a different project');
+          }
+        })();
+        break;
+      case 'delegation':
+        await (async () => {
+          const b = await ctx.db.get(blocker.id);
+          if (b === null) {
+            throw new Error('Blocker delegation does not exist');
+          }
+          if (task.project !== undefined && b.project !== task.project) {
+            throw new Error('Blocker task is in a different project');
+          }
+        })();
+        break;
+    }
     await ctx.db.patch(id, { blockers: [...task.blockers, blocker] });
   },
 });
