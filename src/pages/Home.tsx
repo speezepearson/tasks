@@ -95,15 +95,22 @@ function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                             console.log("link", link);
                             if (link === undefined) {
                                 const timeout = guessTimeoutMillisFromText(text);
-                                const newDelegationId = await createDelegation(
-                                    timeout
-                                        ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
-                                        : { text }
-                                );
-                                await linkBlocker({
-                                    id: task._id,
-                                    blocker: { type: 'delegation', id: newDelegationId },
-                                });
+                                if (timeout?.withoutDate.trim() === "") {
+                                    await linkBlocker({
+                                        id: task._id,
+                                        blocker: { type: 'time', millis: timeout.timeout.getTime() },
+                                    });
+                                } else {
+                                    const newDelegationId = await createDelegation(
+                                        timeout
+                                            ? { text: timeout.withoutDate, timeoutMillis: timeout.timeout.getTime() }
+                                            : { text }
+                                    );
+                                    await linkBlocker({
+                                        id: task._id,
+                                        blocker: { type: 'delegation', id: newDelegationId },
+                                    });
+                                }
                             } else {
                                 console.log("awaiting link for", text);
                                 await link();
