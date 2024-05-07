@@ -433,14 +433,16 @@ export function Page() {
             </div>
             <div className="col-md">
                 <h1 className="text-center"> Timed Out </h1>
-                <ul className="list-group">
-                    {timedOutBlockers === undefined
-                        ? <li className="list-group-item">Loading...</li>
-                        : timedOutBlockers
-                            .map((blocker) => <li key={blocker._id} className="list-group-item">
-                                <Delegation delegation={blocker} />
-                            </li>)}
-                </ul>
+                <div className="card p-2">
+                    <div className="ms-4">
+                        {timedOutBlockers === undefined
+                            ? <div>Loading...</div>
+                            : timedOutBlockers
+                                .map((blocker) => <div key={blocker._id}>
+                                    <Delegation delegation={blocker} />
+                                </div>)}
+                    </div>
+                </div>
             </div>
         </div>
 
