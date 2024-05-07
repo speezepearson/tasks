@@ -1,9 +1,9 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { vBlocker } from "./schema";
 import { Doc } from "./_generated/dataModel";
+import { mutationWithUser, queryWithUser } from "./lib/withUser";
 
-export const create = mutation({
+export const create = mutationWithUser({
   args: {
     text: v.string(),
     blockers: v.optional(v.array(vBlocker)),
@@ -14,21 +14,21 @@ export const create = mutation({
   },
 });
 
-export const get = query({
+export const get = queryWithUser({
   args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
 });
 
-export const list = query({
+export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("tasks").collect();
   },
 });
 
-export const update = mutation({
+export const update = mutationWithUser({
   args: {
     id: v.id("tasks"),
     text: v.string(),
@@ -39,7 +39,7 @@ export const update = mutation({
   },
 });
 
-export const setCompleted = mutation({
+export const setCompleted = mutationWithUser({
   args: {
     id: v.id("tasks"),
     isCompleted: v.boolean(),
@@ -49,7 +49,7 @@ export const setCompleted = mutation({
   },
 });
 
-export const unlinkBlocker = mutation({
+export const unlinkBlocker = mutationWithUser({
   args: {
     id: v.id("tasks"),
     blocker: vBlocker,
@@ -63,7 +63,7 @@ export const unlinkBlocker = mutation({
   },
 });
 
-export const linkBlocker = mutation({
+export const linkBlocker = mutationWithUser({
   args: {
     id: v.id("tasks"),
     blocker: vBlocker,

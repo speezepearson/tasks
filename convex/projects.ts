@@ -1,7 +1,7 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationWithUser, queryWithUser } from "./lib/withUser";
 
-export const create = mutation({
+export const create = mutationWithUser({
   args: {
     name: v.string(),
     color: v.optional(v.string()),
@@ -11,14 +11,14 @@ export const create = mutation({
   },
 });
 
-export const archive = mutation({
+export const archive = mutationWithUser({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { archivedAtMillis: Date.now() });
   },
 });
 
-export const update = mutation({
+export const update = mutationWithUser({
   args: {
     id: v.id("projects"),
     name: v.string(),
@@ -29,14 +29,14 @@ export const update = mutation({
   },
 });
 
-export const get = query({
+export const get = queryWithUser({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
 });
 
-export const list = query({
+export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("projects").withIndex('archivedAtMillis', q => q.eq('archivedAtMillis', undefined)).collect();

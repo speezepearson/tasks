@@ -1,7 +1,7 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationWithUser, queryWithUser } from "./lib/withUser";
 
-export const create = mutation({
+export const create = mutationWithUser({
   args: {
     text: v.string(),
   },
@@ -10,7 +10,7 @@ export const create = mutation({
   },
 });
 
-export const list = query({
+export const list = queryWithUser({
   args: {
     limit: v.number(),
   },
@@ -22,7 +22,7 @@ export const list = query({
   },
 });
 
-export const archive = mutation({
+export const archive = mutationWithUser({
   args: {
     id: v.id("captures"),
   },

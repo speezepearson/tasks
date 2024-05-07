@@ -36,4 +36,10 @@ export default defineSchema({
     completedAtMillis: v.optional(v.number()),
     project: v.optional(v.id('projects')),
   }),
+
+  users: defineTable({
+    tokenIdentifier: v.string(),
+  })
+    .index('tokenIdentifier', ['tokenIdentifier'])
+  ,
 });
