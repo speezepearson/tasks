@@ -419,19 +419,10 @@ export function Page() {
 
     const [nextActionFilterField, setNextActionFilterField] = useState("");
 
-    if (projects === undefined
-        || tasks === undefined
-        || blockers === undefined
-        || projectsById === undefined
-        || tasksGroupedByProject === undefined
-        || tasksById === undefined
-        || delegationsById === undefined
-        || outstandingBlockers === undefined
-    ) {
-        return <div>Loading...</div>
-    }
-
-    const timedOutBlockers = blockers.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime());
+    const timedOutBlockers = useMemo(
+        () => blockers?.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime()),
+        [blockers, now],
+    );
 
     return <div>
         <div>
@@ -442,10 +433,12 @@ export function Page() {
         <div className="mt-4">
             <h1 className="text-center"> Timed Out </h1>
             <ul className="list-group">
-                {timedOutBlockers
-                    .map((blocker) => <li key={blocker._id} className="list-group-item">
-                        <Delegation delegation={blocker} />
-                    </li>)}
+                {timedOutBlockers === undefined
+                    ? <li className="list-group-item">Loading...</li>
+                    : timedOutBlockers
+                        .map((blocker) => <li key={blocker._id} className="list-group-item">
+                            <Delegation delegation={blocker} />
+                        </li>)}
             </ul>
         </div>
 
@@ -461,21 +454,28 @@ export function Page() {
                 />
             </div>
             <div className="mt-1">
-                {tasksGroupedByProject
-                    .map(([p, projectTasks]) => (
-                        <ProjectCard
-                            key={p?._id ?? "<undef>"}
-                            project={p}
-                            projectTasks={projectTasks.filter((task) =>
-                                task.completedAtMillis === undefined &&
-                                outstandingBlockers.get(task._id)!.isEmpty() &&
-                                textMatches(task.text, nextActionFilterField)
-                            )}
-                            projectsById={projectsById}
-                            tasksById={tasksById}
-                            delegationsById={delegationsById}
-                        />
-                    ))}
+                {(tasksGroupedByProject === undefined
+                    || outstandingBlockers === undefined
+                    || projectsById === undefined
+                    || tasksById === undefined
+                    || delegationsById === undefined
+                )
+                    ? <div>Loading...</div>
+                    : tasksGroupedByProject
+                        .map(([p, projectTasks]) => (
+                            <ProjectCard
+                                key={p?._id ?? "<undef>"}
+                                project={p}
+                                projectTasks={projectTasks.filter((task) =>
+                                    task.completedAtMillis === undefined &&
+                                    outstandingBlockers.get(task._id)!.isEmpty() &&
+                                    textMatches(task.text, nextActionFilterField)
+                                )}
+                                projectsById={projectsById}
+                                tasksById={tasksById}
+                                delegationsById={delegationsById}
+                            />
+                        ))}
             </div>
         </div>
 
@@ -483,17 +483,24 @@ export function Page() {
             <div className="text-center">
                 <h1>Projects</h1>
             </div>
-            {tasksGroupedByProject
-                .map(([project, projectTasks]) => (
-                    <ProjectCard
-                        key={project?._id ?? "<undef>"}
-                        project={project}
-                        projectTasks={projectTasks}
-                        projectsById={projectsById}
-                        tasksById={tasksById}
-                        delegationsById={delegationsById}
-                    />
-                ))}
+            {(tasksGroupedByProject === undefined
+                || outstandingBlockers === undefined
+                || projectsById === undefined
+                || tasksById === undefined
+                || delegationsById === undefined
+            )
+                ? <div>Loading...</div>
+                : tasksGroupedByProject
+                    .map(([project, projectTasks]) => (
+                        <ProjectCard
+                            key={project?._id ?? "<undef>"}
+                            project={project}
+                            projectTasks={projectTasks}
+                            projectsById={projectsById}
+                            tasksById={tasksById}
+                            delegationsById={delegationsById}
+                        />
+                    ))}
             <div className="text-center mt-2">
                 <CreateProjectForm />
             </div>
@@ -503,11 +510,13 @@ export function Page() {
             <h1 className="text-center"> Delegations </h1>
             <div className="card p-2">
                 <div className="ms-4">
-                    {blockers
-                        .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
-                        .map((blocker) => <div key={blocker._id}>
-                            <Delegation delegation={blocker} />
-                        </div>)}
+                    {blockers === undefined
+                        ? <div>Loading...</div>
+                        : blockers
+                            .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
+                            .map((blocker) => <div key={blocker._id}>
+                                <Delegation delegation={blocker} />
+                            </div>)}
                     <div>
                         <CreateDelegationForm />
                     </div>
