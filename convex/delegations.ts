@@ -5,7 +5,7 @@ export const create = mutationWithUser({
   args: {
     text: v.string(),
     timeoutMillis: v.number(),
-    project: v.optional(v.id("projects")),
+    project: v.id("projects"),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("delegations", { owner: ctx.user._id, text: args.text, timeoutMillis: args.timeoutMillis, completedAtMillis: undefined, project: args.project });

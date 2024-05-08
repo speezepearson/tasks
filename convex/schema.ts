@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { migrationsTable } from "convex-helpers/server/migrations";
 
 export const vBlocker = v.union(
   v.object({ type: v.literal('task'), id: v.id('tasks') }),
@@ -9,7 +10,7 @@ export const vBlocker = v.union(
 
 export default defineSchema({
   projects: defineTable({
-    owner: v.optional(v.id('users')),
+    owner: v.id('users'),
     name: v.string(),
     color: v.optional(v.string()),
     archivedAtMillis: v.optional(v.number()),
@@ -19,7 +20,7 @@ export default defineSchema({
   ,
 
   captures: defineTable({
-    owner: v.optional(v.id('users')),
+    owner: v.id('users'),
     text: v.string(),
     archivedAtMillis: v.optional(v.number()),
   })
@@ -27,21 +28,21 @@ export default defineSchema({
   ,
 
   tasks: defineTable({
-    owner: v.optional(v.id('users')),
+    owner: v.id('users'),
     text: v.string(),
     completedAtMillis: v.optional(v.number()),
     blockers: v.array(vBlocker),
-    project: v.optional(v.id('projects')),
+    project: v.id('projects'),
   })
     .index('owner', ['owner'])
   ,
 
   delegations: defineTable({
-    owner: v.optional(v.id('users')),
+    owner: v.id('users'),
     text: v.string(),
     timeoutMillis: v.number(),
     completedAtMillis: v.optional(v.number()),
-    project: v.optional(v.id('projects')),
+    project: v.id('projects'),
   })
     .index('owner', ['owner'])
   ,
@@ -49,8 +50,11 @@ export default defineSchema({
   users: defineTable({
     email: v.string(),
     tokenIdentifier: v.string(),
+    miscProject: v.optional(v.id('projects')),
   })
     .index('tokenIdentifier', ['tokenIdentifier'])
     .index('email', ['email'])
   ,
+
+  migrations: migrationsTable,
 });

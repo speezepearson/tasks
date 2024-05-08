@@ -1,13 +1,13 @@
 import { v } from "convex/values";
-import { vBlocker } from "./schema";
 import { Doc } from "./_generated/dataModel";
 import { mutationWithUser, queryWithUser } from "./lib/withUser";
+import { vBlocker } from "./schema";
 
 export const create = mutationWithUser({
   args: {
     text: v.string(),
     blockers: v.optional(v.array(vBlocker)),
-    project: v.optional(v.id('projects')),
+    project: v.id('projects'),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("tasks", { owner: ctx.user._id, text: args.text, project: args.project, blockers: args.blockers ?? [] });
@@ -93,7 +93,7 @@ export const linkBlocker = mutationWithUser({
           if (b === null) {
             throw new Error('Blocker task does not exist');
           }
-          if (task.project !== undefined && b.project !== task.project) {
+          if (b.project !== task.project) {
             throw new Error('Blocker task is in a different project');
           }
         })();
@@ -104,7 +104,7 @@ export const linkBlocker = mutationWithUser({
           if (b === null) {
             throw new Error('Blocker delegation does not exist');
           }
-          if (task.project !== undefined && b.project !== task.project) {
+          if (b.project !== task.project) {
             throw new Error('Blocker task is in a different project');
           }
         })();

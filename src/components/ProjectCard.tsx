@@ -11,7 +11,7 @@ import { listcmp } from "../common";
 export function ProjectCard({
     project, projectTasks, projectsById, tasksById, delegationsById,
 }: {
-    project: Doc<'projects'> | undefined;
+    project: Doc<'projects'>;
     projectTasks: List<Doc<'tasks'>>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
@@ -25,16 +25,14 @@ export function ProjectCard({
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
     return <>
-        {editing && project && <EditProjectModal
+        {editing && <EditProjectModal
             project={project}
             existingProjects={allProjectsList}
             onHide={() => { setEditing(false); }} />}
-        <Accordion sx={{ backgroundColor: project?.color ?? 'none' }} expanded={expanded}>
+        <Accordion sx={{ backgroundColor: project.color ?? 'none' }} expanded={expanded}>
             <AccordionSummary onClick={() => { setExpanded(!expanded); }} expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6">
-                    {project === undefined
-                        ? "(misc)"
-                        : project.name}
+                    {project.name}
                 </Typography>
             </AccordionSummary>
             <AccordionDetails>
@@ -51,11 +49,11 @@ export function ProjectCard({
                     )}
                 </Box>
             </AccordionDetails>
-            {project && <AccordionActions>
+            <AccordionActions>
                 <Button onClick={() => { setEditing(true); }}>
                     Edit Project
                 </Button>
-            </AccordionActions>}
+            </AccordionActions>
         </Accordion>
     </>;
 }

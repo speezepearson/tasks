@@ -17,10 +17,10 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
 
     const optionsByText = useMemo(() => Map([
         ...allTasks
-            .filter(t => t._id !== task._id && (t.project === task.project || task.project === undefined))
+            .filter(t => t._id !== task._id && (t.project === task.project))
             .map(t => [t.text, () => linkBlocker({ id: task._id, blocker: { type: 'task', id: t._id } })] as [string, () => Promise<null>]),
         ...allDelegations
-            .filter(d => d.project === task.project || task.project === undefined)
+            .filter(d => d.project === task.project)
             .map(b => [b.text, () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } })] as [string, () => Promise<null>]),
     ]), [allTasks, allDelegations, linkBlocker, task]);
 

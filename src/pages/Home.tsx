@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useMemo, useState } from "react";
 import { List, Map } from "immutable";
-import { textMatches, useNow } from "../common";
+import { must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
 import { Box, Button, Card, CardContent, Grid, Stack, TextField } from "@mui/material";
 import { CreateProjectModal } from "../components/CreateProjectModal";
@@ -11,7 +11,7 @@ import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { listcmp } from "../common";
 import { Delegation } from "../components/Delegation";
-import { CreateDelegationForm } from "../components/CreateDelegationForm";
+// import { CreateDelegationForm } from "../components/CreateDelegationForm";
 
 export function Page() {
     const projects = mapundef(useQuery(api.projects.list), List);
@@ -21,18 +21,17 @@ export function Page() {
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
     const tasksGroupedByProject = useMemo(() => {
         if (projectsById === undefined || tasks === undefined) return undefined;
-        let res = tasks.groupBy(t => t.project && projectsById.get(t.project));
+        let res = tasks.groupBy(t => must(projectsById.get(t.project), "task references nonexistent project"));
         projectsById.forEach((project) => {
             if (!res.has(project)) res = res.set(project, List());
         });
-        if (!res.has(undefined)) res = res.set(undefined, List());
         return res.entrySeq()
-            .filter(([p]) => p?.archivedAtMillis === undefined)
+            .filter(([p]) => p.archivedAtMillis === undefined)
             .sortBy(([p, pt]) => [
-                p === undefined, // towards the end if p is 'misc'
+                p.name.toLowerCase() === 'misc', // towards the end if p is 'misc'
                 pt.isEmpty(), // towards the end if there are no tasks
                 pt.filter(t => t.completedAtMillis === undefined).size > 0, // towards the end if there are no incomplete tasks
-                p !== undefined && -p._creationTime // towards the end if p is older
+                -p._creationTime // towards the end if p is older
             ], listcmp);
     }, [tasks, projectsById]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
@@ -106,7 +105,7 @@ export function Page() {
                             );
                             if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
-                                key={p?._id ?? "<undef>"}
+                                key={p._id}
                                 project={p}
                                 projectTasks={projectTasks}
                                 projectsById={projectsById}
@@ -136,7 +135,7 @@ export function Page() {
                 : tasksGroupedByProject
                     .map(([project, projectTasks]) => (
                         <ProjectCard
-                            key={project?._id ?? "<undef>"}
+                            key={project._id}
                             project={project}
                             projectTasks={projectTasks}
                             projectsById={projectsById}
@@ -149,7 +148,7 @@ export function Page() {
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}><h1> Delegations </h1></Box>
             <Card><CardContent>
-                <CreateDelegationForm />
+                {/* <CreateDelegationForm /> */}
                 <Stack direction="column" sx={{ mt: 1 }}>
                     {blockers === undefined || projectsById === undefined
                         ? <Box>Loading...</Box>

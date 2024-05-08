@@ -5,8 +5,9 @@ import { Result, useLoudRequestStatus, useNow, watchReqStatus } from "../common"
 import { addDays, formatDate, startOfDay } from "date-fns";
 import { Button, Stack, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
+import { Doc } from "../../convex/_generated/dataModel";
 
-export function CreateDelegationForm() {
+export function CreateDelegationForm({ project }: { project: Doc<'projects'> }) {
     const createDelegation = useMutation(api.delegations.create);
     const todayStr = formatDate(addDays(startOfDay(useNow()), 1), 'yyyy-MM-dd');
     const [textF, setTextF] = useState("");
@@ -33,7 +34,7 @@ export function CreateDelegationForm() {
         e.preventDefault();
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            await createDelegation({ text: text.value, timeoutMillis: timeoutMillis.value });
+            await createDelegation({ text: text.value, timeoutMillis: timeoutMillis.value, project: project._id });
             setTextF("");
         })());
     }}>
