@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useState } from "react";
 import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, watchReqStatus } from "../common";
+import { ReqStatus, must, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormHelperText, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
@@ -53,8 +53,8 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
                     .toList()
                     .toArray()}
                 renderInput={(params) => <TextField {...params} label="Project" />}
-                value={newProjectId ? projectsById.get(newProjectId)!.name : null}
-                onChange={(_, projectName) => { setNewProjectId(projectName ? projectsByName.get(projectName)!._id : undefined); }} />
+                value={newProjectId ? must(projectsById.get(newProjectId), "user selected nonexistent Project option in autocomplete").name : null}
+                onChange={(_, projectName) => { setNewProjectId(projectName ? must(projectsByName.get(projectName), "user selected nonexistent Project option in autocomplete")._id : undefined); }} />
         </DialogContent>
 
         <DialogActions>

@@ -33,8 +33,8 @@ export function ProjectCard({
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
     return <>
-        {editing && <EditProjectModal
-            project={project!}
+        {editing && project && <EditProjectModal
+            project={project}
             onHide={() => { setEditing(false); }} />}
         <Accordion sx={{ backgroundColor: project?.color ?? 'none' }} expanded={expanded}>
             <AccordionSummary onClick={() => { setExpanded(!expanded); }} expandIcon={<ExpandMoreIcon />}>
@@ -55,12 +55,12 @@ export function ProjectCard({
                 </Box>
                 )}
             </AccordionDetails>
-            <AccordionActions>
+            {project && <AccordionActions>
                 <Button size="small" onClick={() => {
-                    watchReqStatus(setReq, archive({ id: project!._id })).catch(console.error);
+                    watchReqStatus(setReq, archive({ id: project._id })).catch(console.error);
                 }}>Archive Project</Button>
                 <Button size="small" onClick={() => { setEditing(true); }}>Edit Project</Button>
-            </AccordionActions>
+            </AccordionActions>}
         </Accordion>
     </>;
 }

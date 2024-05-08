@@ -37,7 +37,6 @@ export function errToString(e: unknown): string {
 }
 
 
-
 const timeContext = createContext(new Date());
 
 export function TickProvider({ children }: { children: React.ReactNode; }) {
@@ -54,6 +53,7 @@ export function TickProvider({ children }: { children: React.ReactNode; }) {
 export function useNow() {
     return useContext(timeContext);
 }
+
 export function textMatches(text: string, query: string): boolean {
     for (const word of query.split(/\s+/)) {
         if (!text.toLowerCase().includes(word.toLowerCase())) {
@@ -72,7 +72,9 @@ export function guessTimeoutMillisFromText(text: string): { withoutDate: string;
         withoutDate: text.replace(regexp, ''),
         timeout: new Date(timeoutMillis),
     };
-} export function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
+}
+
+export function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
     task: Doc<'tasks'>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
@@ -81,17 +83,24 @@ export function guessTimeoutMillisFromText(text: string): { withoutDate: string;
     return List(task.blockers.filter((blocker) => {
         switch (blocker.type) {
             case "task":
-                return tasksById.get(blocker.id)!.completedAtMillis === undefined;
+                return must(tasksById.get(blocker.id), "blocker references nonexistent task").completedAtMillis === undefined;
             case "time":
                 return blocker.millis > now.getTime();
             case "delegation":
-                return delegationsById.get(blocker.id)!.completedAtMillis === undefined;
+                return must(delegationsById.get(blocker.id), "blocker references nonexistent delegation").completedAtMillis === undefined;
         }
     }));
 }
+
+export function must<T>(x: T | undefined, msg: string): T {
+    if (x === undefined) throw new Error(msg);
+    return x;
+}
+
 export function mapundef<T, U>(x: T | undefined, f: (x: T) => U): U | undefined {
     return x === undefined ? undefined : f(x);
 }
+
 export function byUniqueKey<T, K>(items: List<T>, key: (item: T) => K): Map<K, T> {
     let map = Map<K, T>();
     items.forEach((item) => {
@@ -99,6 +108,7 @@ export function byUniqueKey<T, K>(items: List<T>, key: (item: T) => K): Map<K, T
     });
     return map;
 }
+
 export function listcmp<T>(a: T[], b: T[]): number {
     for (let i = 0; i < Math.min(a.length, b.length); i++) {
         if (a[i] < b[i]) return -1;
@@ -106,6 +116,7 @@ export function listcmp<T>(a: T[], b: T[]): number {
     }
     return a.length - b.length;
 }
+
 export function parseISOMillis(date: string): number | undefined {
     try {
         const res = parseISO(date).getTime();

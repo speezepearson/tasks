@@ -18,6 +18,7 @@ module.exports = {
       { allowConstantExport: true },
     ],
   },
+  ignorePatterns: ["convex/auth.config.ts", "convex/_generated/*"],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',

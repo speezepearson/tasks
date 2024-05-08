@@ -26,9 +26,12 @@ export const store = mutation({
             }
             return user._id;
         }
+        if (identity.email === undefined) {
+            throw new Error("Identity does not have an email address");
+        }
         // If it's a new identity, create a new `User`.
         return await ctx.db.insert("users", {
-            email: identity.email!,
+            email: identity.email,
             tokenIdentifier: identity.tokenIdentifier,
         });
     },

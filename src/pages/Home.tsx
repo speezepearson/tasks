@@ -100,7 +100,7 @@ export function Page() {
                         .map(([p, projectTasks]) => {
                             projectTasks = projectTasks.filter((task) =>
                                 task.completedAtMillis === undefined &&
-                                outstandingBlockers.get(task._id)!.isEmpty() &&
+                                outstandingBlockers.get(task._id, List()).isEmpty() &&
                                 textMatches(task.text, nextActionFilterField)
                             );
                             if (projectTasks.isEmpty()) return null;

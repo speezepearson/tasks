@@ -10,7 +10,7 @@ import { parseISOMillis } from "../common";
 export function CreateDelegationForm() {
     const createDelegation = useMutation(api.delegations.create);
     const [text, setText] = useState("");
-    const [timeoutMillis, setTimeoutMillis] = useState(parseISOMillis(formatDate(addDays(new Date(), 1), 'yyyy-MM-dd'))!);
+    const [timeoutMillis, setTimeoutMillis] = useState(addDays(new Date(), 1).getTime());
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
     useEffect(() => {
         if (req.type === 'error') alert(req.message);

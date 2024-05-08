@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, useNow, watchReqStatus } from "../common";
+import { ReqStatus, must, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "../SingleLineMarkdown";
 import { Box, Button, Checkbox, Stack, Typography } from "@mui/material";
@@ -68,7 +68,7 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                         switch (blocker.type) {
                             case "task":
                                 return <Box key={blocker.id}>
-                                    <SingleLineMarkdown>{tasksById.get(blocker.id)!.text}</SingleLineMarkdown>
+                                    <SingleLineMarkdown>{must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}</SingleLineMarkdown>
                                     {" "} {unlinkButton}
                                 </Box>;
                             case "time":
@@ -77,15 +77,18 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                                     {" "} {unlinkButton}
                                 </Box>;
                             case "delegation":
-                                return <Box key={blocker.id}>
-                                    <Checkbox
-                                        checked={delegationsById.get(blocker.id)!.completedAtMillis !== undefined}
-                                        onChange={(e) => { setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error); }}
-                                        style={{ width: '1em', height: '1em' }} />
-                                    {" "}
-                                    <SingleLineMarkdown>{delegationsById.get(blocker.id)!.text}</SingleLineMarkdown>
-                                    {" "} {unlinkButton}
-                                </Box>;
+                                return (() => {
+                                    const delegation = must(delegationsById.get(blocker.id), "task-blocker references nonexistent delegation");
+                                    return <Box key={blocker.id}>
+                                        <Checkbox
+                                            checked={delegation.completedAtMillis !== undefined}
+                                            onChange={(e) => { setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error); }}
+                                            style={{ width: '1em', height: '1em' }} />
+                                        {" "}
+                                        <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
+                                        {" "} {unlinkButton}
+                                    </Box>;
+                                })();
                         }
                     })}
                 </Box>
