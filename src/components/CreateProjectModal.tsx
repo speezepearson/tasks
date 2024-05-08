@@ -1,34 +1,27 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useMemo, useState } from "react";
+import { Result, randomProjectColor, useLoudRequestStatus, watchReqStatus } from "../common";
+import Button from "@mui/material/Button";
+import { Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 import { Doc } from "../../convex/_generated/dataModel";
-import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 import { List } from "immutable";
 
-export function EditProjectModal({ project, existingProjects, onHide }: {
-    project: Doc<'projects'>;
-    existingProjects: List<Doc<'projects'>>;
-    onHide: () => unknown;
-}) {
-    const archive = useMutation(api.projects.archive);
-    const update = useMutation(api.projects.update);
+export function CreateProjectModal({ onHide, existingProjects }: { onHide: () => void, existingProjects: List<Doc<'projects'>> }) {
+    const create = useMutation(api.projects.create);
 
-    const [nameF, setNameF] = useState(project.name);
-    const [colorF, setColorF] = useState(project.color ?? '');
+    const [nameF, setNameF] = useState("");
+    const [colorF, setColorF] = useState(randomProjectColor());
 
     const [req, setReq] = useLoudRequestStatus();
 
     const name: Result<string> = useMemo(
         () => {
             if (nameF.trim() === "") return { type: 'err', message: "Name is required" };
-            if (existingProjects.find(p => p._id !== project._id && p.name === nameF)) return { type: 'err', message: "Project with this name already exists" };
+            if (existingProjects.find(p => p.name === nameF)) return { type: 'err', message: "Project with this name already exists" };
             return { type: 'ok', value: nameF }
-        }, [nameF, existingProjects, project]);
-    const color: Result<string> = useMemo(() =>
-        ({ type: 'ok', value: colorF }),
-        [colorF],
-    );
+        }, [nameF, existingProjects]);
+    const color: Result<string> = { type: 'ok', value: colorF };
     const canSubmit = req.type !== 'working'
         && name.type === 'ok'
         && color.type === 'ok'; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
@@ -36,26 +29,29 @@ export function EditProjectModal({ project, existingProjects, onHide }: {
     const doSave = () => {
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            await update({ id: project._id, name: name.value, color: color.value })
+            await create({ name: name.value, color: color.value });
             onHide();
-        })())
-    };
+            setColorF(randomProjectColor());
+        })());
+    }
 
     return <Dialog open fullWidth onClose={onHide} PaperProps={{
         component: 'form',
-        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave(); },
-    }}>
-        <DialogTitle>Edit project</DialogTitle>
+        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave() },
+    }}
+        disableRestoreFocus // HACK: autofocus doesn't work without this: https://github.com/mui/material-ui/issues/33004
+    >
+        <DialogTitle>Create project</DialogTitle>
         <DialogContent>
             <TextField
                 label="Project name"
-                error={name.type === 'err'}
                 sx={{ mt: 1 }}
+                error={name.type === 'err'}
                 fullWidth
                 autoFocus
                 type="text"
                 value={nameF}
-                onChange={(e) => { setNameF(e.target.value); }}
+                onChange={(e) => { setNameF(e.target.value) }}
             />
 
             <FormControl sx={{ mt: 4 }}>
@@ -67,21 +63,15 @@ export function EditProjectModal({ project, existingProjects, onHide }: {
                     onChange={(e) => { setColorF(e.target.value); }}
                 />
             </FormControl>
-
-        </DialogContent>
-
+        </DialogContent >
 
         <DialogActions>
-            <Button variant="outlined" color="warning" onClick={() => {
-                watchReqStatus(setReq, archive({ id: project._id }));
-                onHide();
-            }}>Archive Project</Button>
             <Button variant="outlined" onClick={onHide}>
                 Close
             </Button>
 
             <Button variant="contained" type="submit" disabled={!canSubmit}>
-                {req.type === 'working' ? 'Saving...' : 'Save'}
+                {req.type === 'working' ? 'Creating...' : 'Create project'}
             </Button>
         </DialogActions>
     </Dialog>;

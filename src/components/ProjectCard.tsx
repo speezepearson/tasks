@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Typography } from "@mui/material";
@@ -20,12 +20,14 @@ export function ProjectCard({
 
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const [editing, setEditing] = useState(false);
+    const allProjectsList = useMemo(() => List(projectsById.values()), [projectsById]);
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
     return <>
         {editing && project && <EditProjectModal
             project={project}
+            existingProjects={allProjectsList}
             onHide={() => { setEditing(false); }} />}
         <Accordion sx={{ backgroundColor: project?.color ?? 'none' }} expanded={expanded}>
             <AccordionSummary onClick={() => { setExpanded(!expanded); }} expandIcon={<ExpandMoreIcon />}>

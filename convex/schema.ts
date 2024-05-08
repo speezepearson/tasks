@@ -15,6 +15,7 @@ export default defineSchema({
     archivedAtMillis: v.optional(v.number()),
   })
     .index('owner_archivedAtMillis', ['owner', 'archivedAtMillis'])
+    .index('owner_name', ['owner', 'name'])
   ,
 
   captures: defineTable({

@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { List, Map } from "immutable";
 import { textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
-import { Box, Card, CardContent, Grid, Stack, TextField } from "@mui/material";
-import { CreateProjectForm } from "../components/CreateProjectForm";
+import { Box, Button, Card, CardContent, Grid, Stack, TextField } from "@mui/material";
+import { CreateProjectModal } from "../components/CreateProjectModal";
 import { getOutstandingBlockers } from "../common";
 import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
@@ -53,6 +53,8 @@ export function Page() {
         () => blockers?.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime()),
         [blockers, now],
     );
+
+    const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
     return <Stack direction="column">
         <Grid container spacing={2}>
@@ -118,7 +120,11 @@ export function Page() {
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}>
                 <h1>Projects</h1>
-                <CreateProjectForm />
+                {showCreateProjectModal && <CreateProjectModal
+                    onHide={() => { setShowCreateProjectModal(false) }}
+                    existingProjects={projects ?? List()}
+                />}
+                <Button variant="contained" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
             </Box>
             {(tasksGroupedByProject === undefined
                 || outstandingBlockers === undefined

@@ -7,6 +7,10 @@ export const create = mutationWithUser({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const existingWithName = await ctx.db.query("projects").withIndex('owner_name', q => q.eq('owner', ctx.user._id).eq('name', args.name)).unique();
+    if (existingWithName) {
+      throw new Error('a project with that name already exists');
+    }
     return await ctx.db.insert("projects", { owner: ctx.user._id, name: args.name, color: args.color });
   },
 });
@@ -30,6 +34,10 @@ export const update = mutationWithUser({
   handler: async (ctx, { id, name, color }) => {
     if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
       throw new Error('not found');
+    }
+    const existingWithName = await ctx.db.query("projects").withIndex('owner_name', q => q.eq('owner', ctx.user._id).eq('name', name)).unique();
+    if (existingWithName && existingWithName._id !== id) {
+      throw new Error('a project with that name already exists');
     }
     await ctx.db.patch(id, { name, color });
   },

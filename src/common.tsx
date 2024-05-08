@@ -153,3 +153,29 @@ export function alertOnErr<T>(promise: Promise<T>): void {
     promise.catch((e) => { alert(errToString(e)); throw e; });
 }
 
+// Hex color codes for easily distinguishable light colors.
+export const recommendedLightProjectColors = List.of(
+    '#20B2AA', // Light Sea Green
+    '#778899', // Light Slate Gray
+    '#87CEFA', // Light Sky Blue
+    '#90EE90', // Light Green
+    '#ADD8E6', // Light Blue
+    '#B0C4DE', // Light Steel Blue
+    '#BDFCC9', // Light Mint
+    '#D3D3D3', // Light Grey
+    '#E0FFFF', // Light Cyan
+    '#EE82EE', // Light Violet
+    '#F08080', // Light Coral
+    '#F0E68C', // Light Khaki
+    '#FAFAD2', // Light Goldenrod
+    '#FED8B1', // Light Peach
+    '#FF77FF', // Light Magenta
+    '#FFA07A', // Light Orange
+    '#FFB6C1', // Light Pink
+    '#FFFFCC', // Light Cream
+    '#FFFFE0', // Light Yellow
+);
+
+export function randomProjectColor(): string {
+    return recommendedLightProjectColors.get(Math.floor(Math.random() * recommendedLightProjectColors.size))!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+}
