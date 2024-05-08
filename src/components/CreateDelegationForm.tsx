@@ -24,8 +24,6 @@ export function CreateDelegationForm() {
         <Stack direction="row">
             <TextField
                 label="New text"
-                size="small"
-                margin="normal"
                 sx={{ flexGrow: 1 }}
                 value={text} onChange={(e) => {
                     const timeout = guessTimeoutMillisFromText(e.target.value);
@@ -39,8 +37,6 @@ export function CreateDelegationForm() {
             />
             <TextField
                 label="timeout"
-                size="small"
-                margin="normal"
                 type="date"
                 style={{ maxWidth: '10em' }}
                 value={formatDate(timeoutMillis, 'yyyy-MM-dd')}
@@ -49,7 +45,9 @@ export function CreateDelegationForm() {
                     if (timeoutMillis !== undefined) setTimeoutMillis(timeoutMillis);
                 }}
             />
-            <Button size="small" variant="contained" type="submit">+delegation</Button>
+            <Button variant="contained" type="submit">
+                +delegation
+            </Button>
         </Stack>
     </form>;
 }

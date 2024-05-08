@@ -23,7 +23,6 @@ export function Delegation({ delegation, projectsById }: { delegation: Doc<'dele
         <Checkbox
             checked={delegation.completedAtMillis !== undefined}
             onChange={(e) => { watchReqStatus(setReq, setCompleted({ id: delegation._id, isCompleted: e.target.checked })) }}
-            style={{ width: '1em', height: '1em' }}
         />
         <Box
             sx={{ ml: 1, flexGrow: 1 }}

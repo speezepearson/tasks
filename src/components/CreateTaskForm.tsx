@@ -29,17 +29,21 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
             setJustCreated(true);
         })());
     }}>
-        <Stack direction="row">
+        <Stack direction="row" alignItems={'center'}>
             <TextField
                 label="New text"
-                size="small"
                 sx={{ flexGrow: 1 }}
                 ref={inputRef}
                 disabled={req.type === 'working'}
                 value={text}
                 onChange={(e) => { setText(e.target.value); }}
             />
-            <Button sx={{ ml: 1 }} variant="contained" size="small" disabled={req.type === 'working'} type="submit">+task</Button>
+            <Button sx={{ ml: 1, py: 1 }} variant="contained"
+                disabled={req.type === 'working'}
+                type="submit"
+            >
+                +task
+            </Button>
         </Stack>
     </form>;
 }

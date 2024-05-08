@@ -81,7 +81,6 @@ export function Page() {
             <Box sx={{ textAlign: 'center' }}>
                 <h1>Next Actions</h1>
                 <TextField
-                    size="small"
                     value={nextActionFilterField}
                     onChange={(e) => { setNextActionFilterField(e.target.value) }}
                     label="filter"

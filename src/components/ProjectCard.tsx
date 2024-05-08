@@ -43,21 +43,23 @@ export function ProjectCard({
             </AccordionSummary>
             <AccordionDetails>
                 <CreateTaskForm project={project} />
-                {showTasks.map((task) => <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                    <Task
-                        task={task}
-                        projectsById={projectsById}
-                        tasksById={tasksById}
-                        delegationsById={delegationsById}
-                    />
+                <Box sx={{ pt: 1 }}>
+                    {showTasks.map((task) => <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                        <Task
+                            task={task}
+                            projectsById={projectsById}
+                            tasksById={tasksById}
+                            delegationsById={delegationsById}
+                        />
+                    </Box>
+                    )}
                 </Box>
-                )}
             </AccordionDetails>
             {project && <AccordionActions>
-                <Button size="small" onClick={() => {
+                <Button onClick={() => {
                     watchReqStatus(setReq, archive({ id: project._id }));
                 }}>Archive Project</Button>
-                <Button size="small" onClick={() => { setEditing(true); }}>
+                <Button onClick={() => { setEditing(true); }}>
                     Edit Project
                 </Button>
             </AccordionActions>}

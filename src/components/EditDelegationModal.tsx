@@ -36,14 +36,21 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
     }}>
         <DialogTitle>Edit delegation</DialogTitle>
         <DialogContent>
-            <TextField fullWidth autoFocus margin="normal" label="Text" type="text" value={newText} onChange={(e) => { setNewText(e.target.value); }} />
+            <TextField
+                label="Text"
+                sx={{ mt: 1 }}
+                fullWidth
+                autoFocus
+                type="text"
+                value={newText}
+                onChange={(e) => { setNewText(e.target.value); }}
+            />
             <FormHelperText>You can use markdown here.</FormHelperText>
 
             <TextField
                 label="Timeout"
                 sx={{ mt: 4 }}
                 fullWidth
-                margin="normal"
                 type="date"
                 value={formatDate(newTimeoutMillis, 'yyyy-MM-dd')}
                 onChange={(e) => {

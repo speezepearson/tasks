@@ -21,11 +21,10 @@ function QuickCaptureForm() {
             setText("");
         })());
     }}>
-        <Stack direction="row">
+        <Stack direction="row" alignItems={'center'}>
             <TextField
-                size="small"
-                fullWidth
                 label="Capture text"
+                fullWidth
                 autoFocus
                 disabled={req.type === 'working'}
                 value={text}
@@ -33,9 +32,10 @@ function QuickCaptureForm() {
             />
             <Button
                 variant="contained"
-                size="small"
+                sx={{ py: 1 }}
                 disabled={req.type === 'working'}
-                type="submit">
+                type="submit"
+            >
                 +note
             </Button>
         </Stack>
@@ -61,9 +61,8 @@ export function Inbox() {
                         <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
                     </Typography>
                     <Button
-                        size="small"
                         variant="outlined"
-                        sx={{ ml: "auto", py: 0 }}
+                        sx={{ ml: "auto" }}
                         onClick={() => { watchReqStatus(setReq, archive({ id: capture._id })) }}
                     >
                         Archive

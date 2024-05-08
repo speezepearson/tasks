@@ -33,8 +33,6 @@ export function CreateProjectForm() {
             <DialogContent>
                 <TextField
                     label="Project name"
-                    size="small"
-                    margin="normal"
                     fullWidth
                     autoFocus
                     type="text"
@@ -46,7 +44,6 @@ export function CreateProjectForm() {
                     <InputLabel>Color</InputLabel>
                     <TextField
                         type="color"
-                        margin="normal"
                         sx={{ minWidth: "5em" }}
                         value={color}
                         onChange={(e) => { setColor(e.target.value) }}
@@ -64,7 +61,7 @@ export function CreateProjectForm() {
                 </Button>
             </DialogActions>
         </Dialog>}
-        <Button variant="contained" size="small" onClick={() => { setShowModal(true) }}>+project</Button>
+        <Button variant="contained" onClick={() => { setShowModal(true) }}>+project</Button>
     </>;
 }
 

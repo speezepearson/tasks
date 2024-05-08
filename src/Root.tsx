@@ -13,8 +13,8 @@ export function Root() {
                 <Box sx={{ ml: 2 }}><Link to="/add">Quick Capture</Link></Box>
                 <Box sx={{ ml: 'auto' }}>
                     {isLoading ? "Loading..." : isAuthenticated
-                        ? <SignOutButton><Button variant="outlined">sign out</Button></SignOutButton>
-                        : <SignInButton><Button variant="contained">sign in</Button></SignInButton>
+                        ? <SignOutButton><Button sx={{ py: 1 }} size="medium" variant="outlined">sign out</Button></SignOutButton>
+                        : <SignInButton><Button sx={{ py: 1 }} size="medium" variant="contained">sign in</Button></SignInButton>
                     }
                 </Box>
             </Stack>

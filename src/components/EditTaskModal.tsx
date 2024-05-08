@@ -36,8 +36,8 @@ export function EditTaskModal({ task, projectsById, onHide }: {
             <FormControl fullWidth>
                 <TextField
                     label="Task text"
+                    sx={{ mt: 1 }}
                     autoFocus
-                    margin="normal"
                     type="text"
                     value={newText}
                     onChange={(e) => { setNewText(e.target.value); }}

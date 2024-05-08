@@ -11,7 +11,7 @@ import { AddBlockerModal } from "./AddBlockerModal";
 import { getOutstandingBlockers } from "../common";
 import { EditTaskModal } from "./EditTaskModal";
 
-export function Task({ task, projectsById, tasksById, delegationsById: delegationsById }: {
+export function Task({ task, projectsById, tasksById, delegationsById }: {
     task: Doc<'tasks'>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
@@ -41,7 +41,6 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                     if (req.type === 'working') return;
                     watchReqStatus(setReq, setCompleted({ id: task._id, isCompleted: e.target.checked }));
                 }}
-                style={{ width: '1em', height: '1em' }}
                 disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
             {" "}
             <Typography noWrap sx={{ ml: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
@@ -56,9 +55,7 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                 allTasks={List(tasksById.values())}
                 allDelegations={List(delegationsById.values())}
             />}
-            <Button size="small" variant="outlined" sx={{ py: 0 }}
-                onClick={() => { setShowBlockerModal(true); }}
-            >
+            <Button variant="outlined" onClick={() => { setShowBlockerModal(true); }}>
                 +blocker
             </Button>
         </Stack>
@@ -68,8 +65,11 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                 <Box sx={{ ml: 2 }}>
                     {outstandingBlockers.map((blocker) => {
                         const unlinkButton = <Button
-                            size="small" sx={{ py: 0 }} variant="outlined"
-                            onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}>unlink</Button>;
+                            variant="outlined"
+                            onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}
+                        >
+                            Unlink
+                        </Button>;
                         switch (blocker.type) {
                             case "task":
                                 return <Box key={blocker.id}>
@@ -90,7 +90,6 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                                         <Checkbox
                                             checked={delegation.completedAtMillis !== undefined}
                                             onChange={(e) => { watchReqStatus(setReq, setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked })) }}
-                                            style={{ width: '1em', height: '1em' }}
                                         />
                                         {" "}
                                         <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>

@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
 import { useLoudRequestStatus, watchReqStatus } from "../common";
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, TextField } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 
 export function EditProjectModal({ project, onHide }: {
     project: Doc<'projects'>;
@@ -31,7 +31,7 @@ export function EditProjectModal({ project, onHide }: {
         <DialogContent>
             <TextField
                 label="Project name"
-                margin="normal"
+                sx={{ mt: 1 }}
                 fullWidth
                 autoFocus
                 type="text"
@@ -41,10 +41,9 @@ export function EditProjectModal({ project, onHide }: {
 
             <FormControl sx={{ mt: 4 }}>
                 <InputLabel>Color</InputLabel>
-                <TextField
+                <Input
                     type="color"
-                    margin="normal"
-                    sx={{ minWidth: "5em", height: "2em" }}
+                    sx={{ minWidth: "5em" }}
                     value={newColor}
                     onChange={(e) => { setNewColor(e.target.value); }}
                 />

@@ -82,7 +82,6 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                 ref={inputRef}
                 autoFocus
                 blurOnSelect={false}
-                size="small"
                 sx={{ my: 1 }}
                 options={optionsByText.keySeq().sort().toArray()}
                 renderInput={(params) => <TextField {...params} label="Blocker" />}
