@@ -9,12 +9,14 @@ import { EditProjectModal } from "./EditProjectModal";
 import { listcmp } from "../common";
 import { QuickCaptureForm } from "./QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
+import { Delegation } from "./Delegation";
 
 export function ProjectCard({
-    project, projectTasks, projectsById, tasksById, delegationsById,
+    project, projectTasks, projectDelegations, projectsById, tasksById, delegationsById,
 }: {
     project: Doc<'projects'>;
     projectTasks: List<Doc<'tasks'>>;
+    projectDelegations: List<Doc<'delegations'>>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
@@ -61,7 +63,7 @@ export function ProjectCard({
                     }
                 </Button>
             </Stack>
-            <Stack direction="column" sx={{ mt: 1, ml: 4, mb: 2, display: expanded ? 'block' : 'none' }}>
+            <Stack direction="column" sx={{ mt: 1, ml: 4, display: expanded ? 'block' : 'none' }}>
                 {showTasks.map((task) => <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
                     <Task
                         task={task}
@@ -72,6 +74,19 @@ export function ProjectCard({
                 </Box>
                 )}
             </Stack>
+            {projectDelegations.size > 0 && <Box sx={{ mx: 2 }}>
+                <hr />
+                <Typography>
+                    Delegations
+                </Typography>
+                <Stack direction="column" sx={{ mt: 1, ml: 2, display: expanded ? 'block' : 'none' }}>
+                    {projectDelegations
+                        .sortBy(d => -d.timeoutMillis)
+                        .map(d => <Box key={d._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                            <Delegation delegation={d} projectsById={projectsById} />
+                        </Box>)}
+                </Stack>
+            </Box>}
         </Card>
     </>;
 }

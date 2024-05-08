@@ -4,13 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
-import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { CreateProjectModal } from "../components/CreateProjectModal";
 import { getOutstandingBlockers } from "../common";
 import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { listcmp } from "../common";
-import { Delegation } from "../components/Delegation";
 import { QuickCaptureForm } from "../components/QuickCaptureForm";
 // import { CreateDelegationForm } from "../components/CreateDelegationForm";
 
@@ -50,11 +49,6 @@ export function Page() {
     const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
     const [nextActionFilterF, setNextActionFilterF] = useState("");
 
-    const timedOutBlockers = useMemo(
-        () => blockers?.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime()),
-        [blockers, now],
-    );
-
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
     const [showQuickCapture, setShowQuickCapture] = useState(false);
@@ -80,29 +74,7 @@ export function Page() {
                 <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
             </DialogActions>
         </Dialog>}
-        <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-                <Inbox />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-                <Card>
-                    <CardContent>
-                        <Typography variant="h4" textAlign="center">
-                            Timed Out
-                        </Typography>
-                        <Box>
-                            {(timedOutBlockers === undefined || projectsById === undefined)
-                                ? <Box>Loading...</Box>
-                                : timedOutBlockers
-                                    .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: "1px solid gray" } }}>
-                                        <Delegation delegation={blocker} projectsById={projectsById} />
-                                    </Box>)}
-                        </Box>
-                    </CardContent>
-                </Card>
-            </Grid>
-        </Grid>
+        <Inbox />
 
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}>
@@ -122,6 +94,7 @@ export function Page() {
                     || projectsById === undefined
                     || tasksById === undefined
                     || delegationsById === undefined
+                    || blockers === undefined
                 )
                     ? <Box>Loading...</Box>
                     : tasksGroupedByProject
@@ -136,6 +109,7 @@ export function Page() {
                                 key={p._id}
                                 project={p}
                                 projectTasks={projectTasks}
+                                projectDelegations={blockers.filter(d => d.project === p._id && d.completedAtMillis === undefined && d.timeoutMillis < now.getTime())}
                                 projectsById={projectsById}
                                 tasksById={tasksById}
                                 delegationsById={delegationsById}
@@ -158,6 +132,7 @@ export function Page() {
                 || projectsById === undefined
                 || tasksById === undefined
                 || delegationsById === undefined
+                || blockers === undefined
             )
                 ? <Box>Loading...</Box>
                 : tasksGroupedByProject
@@ -166,29 +141,12 @@ export function Page() {
                             key={project._id}
                             project={project}
                             projectTasks={projectTasks}
+                            projectDelegations={blockers.filter(d => d.project === project._id)}
                             projectsById={projectsById}
                             tasksById={tasksById}
                             delegationsById={delegationsById}
                         />
                     ))}
-        </Box>
-
-        <Box sx={{ mt: 4 }}>
-            <Typography variant="h4" textAlign="center">Delegations</Typography>
-            <Card>
-                <CardContent>
-                    {/* <CreateDelegationForm /> */}
-                    <Stack direction="column" sx={{ mt: 1 }}>
-                        {blockers === undefined || projectsById === undefined
-                            ? <Box>Loading...</Box>
-                            : blockers
-                                .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
-                                .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                                    <Delegation delegation={blocker} projectsById={projectsById} />
-                                </Box>
-                                )}
-                    </Stack>
-                </CardContent></Card>
         </Box>
     </Stack>
 }

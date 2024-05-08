@@ -7,13 +7,14 @@ import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "./SingleLineMarkdown";
 import { Box, Checkbox, Stack, Typography } from "@mui/material";
 import { EditDelegationModal } from "./EditDelegationModal";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
+import { useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 
 export function Delegation({ delegation, projectsById }: { delegation: Doc<'delegations'>; projectsById: Map<Id<'projects'>, Doc<'projects'>>; }) {
     const setCompleted = useMutation(api.delegations.setCompleted);
     const [, setReq] = useLoudRequestStatus();
 
     const [editing, setEditing] = useState(false);
+    const now = useNow();
 
     return <Stack direction="row" sx={{ backgroundColor: delegation.project && projectsById.get(delegation.project)?.color }}>
         {editing && <EditDelegationModal
@@ -29,8 +30,15 @@ export function Delegation({ delegation, projectsById }: { delegation: Doc<'dele
             role="button"
             onClick={() => { setEditing(true); }}
         >
+            {delegation.completedAtMillis === undefined
+                && delegation.timeoutMillis < now.getTime()
+                && <Typography color="red" display="inline">
+                    TIMED OUT:{" "}
+                </Typography>}
             <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
         </Box>
-        <Typography sx={{ color: 'gray' }}>(by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})</Typography>
+        <Typography sx={{ color: 'gray' }}>
+            (by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})
+        </Typography>
     </Stack>;
 }
