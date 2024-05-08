@@ -48,7 +48,8 @@ export function ProjectCard({
                         task={task}
                         projectsById={projectsById}
                         tasksById={tasksById}
-                        delegationsById={delegationsById} />
+                        delegationsById={delegationsById}
+                    />
                 </Box>
                 )}
             </AccordionDetails>
@@ -56,7 +57,9 @@ export function ProjectCard({
                 <Button size="small" onClick={() => {
                     watchReqStatus(setReq, archive({ id: project._id }));
                 }}>Archive Project</Button>
-                <Button size="small" onClick={() => { setEditing(true); }}>Edit Project</Button>
+                <Button size="small" onClick={() => { setEditing(true); }}>
+                    Edit Project
+                </Button>
             </AccordionActions>}
         </Accordion>
     </>;

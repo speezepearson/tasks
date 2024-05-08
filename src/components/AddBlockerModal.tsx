@@ -54,9 +54,11 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                             blocker: { type: 'time', millis: timeout.timeout.getTime() },
                         });
                     } else {
-                        const newDelegationId = await createDelegation(
-                            { text: timeout.withoutDate, project: task.project, timeoutMillis: timeout.timeout.getTime() }
-                        );
+                        const newDelegationId = await createDelegation({
+                            text: timeout.withoutDate,
+                            project: task.project,
+                            timeoutMillis: timeout.timeout.getTime(),
+                        });
                         await linkBlocker({
                             id: task._id,
                             blocker: { type: 'delegation', id: newDelegationId },
@@ -85,7 +87,8 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                 options={optionsByText.keySeq().sort().toArray()}
                 renderInput={(params) => <TextField {...params} label="Blocker" />}
                 value={text}
-                onChange={(_, value) => { setText(value ?? ""); }} />
+                onChange={(_, value) => { setText(value ?? ""); }}
+            />
         </DialogContent>
         <DialogActions>
             {/* <Button variant="outlined" onClick={onHide}>

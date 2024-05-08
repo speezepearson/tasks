@@ -34,7 +34,14 @@ export function EditTaskModal({ task, projectsById, onHide }: {
         <DialogTitle>Edit task</DialogTitle>
         <DialogContent>
             <FormControl fullWidth>
-                <TextField autoFocus margin="normal" label="Task text" type="text" value={newText} onChange={(e) => { setNewText(e.target.value); }} />
+                <TextField
+                    label="Task text"
+                    autoFocus
+                    margin="normal"
+                    type="text"
+                    value={newText}
+                    onChange={(e) => { setNewText(e.target.value); }}
+                />
                 <FormHelperText>You can use markdown here.</FormHelperText>
             </FormControl>
 
@@ -47,7 +54,12 @@ export function EditTaskModal({ task, projectsById, onHide }: {
                     .toArray()}
                 renderInput={(params) => <TextField {...params} label="Project" />}
                 value={newProjectId ? must(projectsById.get(newProjectId), "user selected nonexistent Project option in autocomplete").name : null}
-                onChange={(_, projectName) => { setNewProjectId(projectName ? must(projectsByName.get(projectName), "user selected nonexistent Project option in autocomplete")._id : undefined); }} />
+                onChange={(_, projectName) => {
+                    setNewProjectId(projectName
+                        ? must(projectsByName.get(projectName), "user selected nonexistent Project option in autocomplete")._id
+                        : undefined);
+                }}
+            />
         </DialogContent>
 
         <DialogActions>

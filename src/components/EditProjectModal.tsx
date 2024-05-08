@@ -29,7 +29,15 @@ export function EditProjectModal({ project, onHide }: {
     }}>
         <DialogTitle>Edit project</DialogTitle>
         <DialogContent>
-            <TextField margin="normal" fullWidth autoFocus label="Project name" type="text" value={newName} onChange={(e) => { setNewName(e.target.value); }} />
+            <TextField
+                label="Project name"
+                margin="normal"
+                fullWidth
+                autoFocus
+                type="text"
+                value={newName}
+                onChange={(e) => { setNewName(e.target.value); }}
+            />
 
             <FormControl sx={{ mt: 4 }}>
                 <InputLabel>Color</InputLabel>
@@ -38,7 +46,8 @@ export function EditProjectModal({ project, onHide }: {
                     margin="normal"
                     sx={{ minWidth: "5em", height: "2em" }}
                     value={newColor}
-                    onChange={(e) => { setNewColor(e.target.value); }} />
+                    onChange={(e) => { setNewColor(e.target.value); }}
+                />
             </FormControl>
         </DialogContent>
 

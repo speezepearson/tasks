@@ -31,7 +31,16 @@ export function CreateProjectForm() {
         >
             <DialogTitle>Edit project</DialogTitle>
             <DialogContent>
-                <TextField margin="normal" fullWidth autoFocus label="Project name" type="text" value={name} onChange={(e) => { setName(e.target.value) }} />
+                <TextField
+                    label="Project name"
+                    size="small"
+                    margin="normal"
+                    fullWidth
+                    autoFocus
+                    type="text"
+                    value={name}
+                    onChange={(e) => { setName(e.target.value) }}
+                />
 
                 <FormControl sx={{ mt: 4 }}>
                     <InputLabel>Color</InputLabel>

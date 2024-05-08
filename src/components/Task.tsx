@@ -50,8 +50,17 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
             >
                 <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
             </Typography>
-            {showBlockerModal && <AddBlockerModal onHide={() => { setShowBlockerModal(false); }} task={task} allTasks={List(tasksById.values())} allDelegations={List(delegationsById.values())} />}
-            <Button size="small" variant="outlined" sx={{ py: 0 }} onClick={() => { setShowBlockerModal(true); }}>+blocker</Button>
+            {showBlockerModal && <AddBlockerModal
+                onHide={() => { setShowBlockerModal(false); }}
+                task={task}
+                allTasks={List(tasksById.values())}
+                allDelegations={List(delegationsById.values())}
+            />}
+            <Button size="small" variant="outlined" sx={{ py: 0 }}
+                onClick={() => { setShowBlockerModal(true); }}
+            >
+                +blocker
+            </Button>
         </Stack>
         {blocked
             && <Box sx={{ ml: 4 }}>
@@ -64,7 +73,9 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                         switch (blocker.type) {
                             case "task":
                                 return <Box key={blocker.id}>
-                                    <SingleLineMarkdown>{must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}</SingleLineMarkdown>
+                                    <SingleLineMarkdown>
+                                        {must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}
+                                    </SingleLineMarkdown>
                                     {" "} {unlinkButton}
                                 </Box>;
                             case "time":
@@ -79,7 +90,8 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                                         <Checkbox
                                             checked={delegation.completedAtMillis !== undefined}
                                             onChange={(e) => { watchReqStatus(setReq, setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked })) }}
-                                            style={{ width: '1em', height: '1em' }} />
+                                            style={{ width: '1em', height: '1em' }}
+                                        />
                                         {" "}
                                         <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
                                         {" "} {unlinkButton}

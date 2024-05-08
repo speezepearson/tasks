@@ -39,7 +39,11 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
             <TextField fullWidth autoFocus margin="normal" label="Text" type="text" value={newText} onChange={(e) => { setNewText(e.target.value); }} />
             <FormHelperText>You can use markdown here.</FormHelperText>
 
-            <TextField sx={{ mt: 4 }} fullWidth margin="normal" label="Timeout"
+            <TextField
+                label="Timeout"
+                sx={{ mt: 4 }}
+                fullWidth
+                margin="normal"
                 type="date"
                 value={formatDate(newTimeoutMillis, 'yyyy-MM-dd')}
                 onChange={(e) => {
@@ -56,7 +60,12 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
                     .toArray()}
                 renderInput={(params) => <TextField {...params} label="Project" />}
                 value={newProjectId ? must(projectsById.get(newProjectId), "user selected nonexistent Project option in autocomplete").name : null}
-                onChange={(_, projectName) => { setNewProjectId(projectName ? must(projectsByName.get(projectName), "user selected nonexistent Project option in autocomplete")._id : undefined); }} />
+                onChange={(_, projectName) => {
+                    setNewProjectId(projectName
+                        ? must(projectsByName.get(projectName), "user selected nonexistent Project option in autocomplete")._id
+                        : undefined);
+                }}
+            />
         </DialogContent>
 
         <DialogActions>

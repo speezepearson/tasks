@@ -31,7 +31,13 @@ function QuickCaptureForm() {
                 value={text}
                 onChange={(e) => { setText(e.target.value) }}
             />
-            <Button variant="contained" size="small" disabled={req.type === 'working'} type="submit">+note</Button>
+            <Button
+                variant="contained"
+                size="small"
+                disabled={req.type === 'working'}
+                type="submit">
+                +note
+            </Button>
         </Stack>
     </form>
 }
@@ -51,8 +57,17 @@ export function Inbox() {
 
             <Stack direction="column">
                 {captures?.map((capture) => <Stack direction="row" key={capture._id}>
-                    <Typography noWrap><SingleLineMarkdown>{capture.text}</SingleLineMarkdown></Typography>
-                    <Button size="small" variant="outlined" sx={{ ml: "auto", py: 0 }} onClick={() => { watchReqStatus(setReq, archive({ id: capture._id })) }}>Archive</Button>
+                    <Typography noWrap>
+                        <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
+                    </Typography>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{ ml: "auto", py: 0 }}
+                        onClick={() => { watchReqStatus(setReq, archive({ id: capture._id })) }}
+                    >
+                        Archive
+                    </Button>
                 </Stack>)}
             </Stack>
         </CardContent>

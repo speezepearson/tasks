@@ -22,21 +22,33 @@ export function CreateDelegationForm() {
         })());
     }}>
         <Stack direction="row">
-            <TextField size="small" sx={{ flexGrow: 1 }} value={text} onChange={(e) => {
-                const timeout = guessTimeoutMillisFromText(e.target.value);
-                if (timeout) {
-                    setTimeoutMillis(timeout.timeout.getTime());
-                    setText(timeout.withoutDate);
-                } else {
-                    setText(e.target.value);
-                }
-            }} placeholder="New delegation text" />
-            <TextField size="small" type="date" style={{ maxWidth: '10em' }}
+            <TextField
+                label="New text"
+                size="small"
+                margin="normal"
+                sx={{ flexGrow: 1 }}
+                value={text} onChange={(e) => {
+                    const timeout = guessTimeoutMillisFromText(e.target.value);
+                    if (timeout) {
+                        setTimeoutMillis(timeout.timeout.getTime());
+                        setText(timeout.withoutDate);
+                    } else {
+                        setText(e.target.value);
+                    }
+                }}
+            />
+            <TextField
+                label="timeout"
+                size="small"
+                margin="normal"
+                type="date"
+                style={{ maxWidth: '10em' }}
                 value={formatDate(timeoutMillis, 'yyyy-MM-dd')}
                 onChange={(e) => {
                     const timeoutMillis = parseISOMillis(e.target.value);
                     if (timeoutMillis !== undefined) setTimeoutMillis(timeoutMillis);
-                }} placeholder="timeout" />
+                }}
+            />
             <Button size="small" variant="contained" type="submit">+delegation</Button>
         </Stack>
     </form>;

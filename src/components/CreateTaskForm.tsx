@@ -30,7 +30,15 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
         })());
     }}>
         <Stack direction="row">
-            <TextField size="small" sx={{ flexGrow: 1 }} ref={inputRef} disabled={req.type === 'working'} value={text} onChange={(e) => { setText(e.target.value); }} label="New task text" />
+            <TextField
+                label="New text"
+                size="small"
+                sx={{ flexGrow: 1 }}
+                ref={inputRef}
+                disabled={req.type === 'working'}
+                value={text}
+                onChange={(e) => { setText(e.target.value); }}
+            />
             <Button sx={{ ml: 1 }} variant="contained" size="small" disabled={req.type === 'working'} type="submit">+task</Button>
         </Stack>
     </form>;
