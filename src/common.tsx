@@ -140,6 +140,7 @@ export function listcmp<T>(a: T[], b: T[]): number {
 }
 
 export function parseISOMillis(date: string): number | undefined {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined;
     try {
         const res = parseISO(date).getTime();
         if (isNaN(res)) return undefined;

@@ -1,16 +1,17 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
-import { Box, Button, Card, CardContent, Grid, Stack, TextField } from "@mui/material";
+import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from "@mui/material";
 import { CreateProjectModal } from "../components/CreateProjectModal";
 import { getOutstandingBlockers } from "../common";
 import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { listcmp } from "../common";
 import { Delegation } from "../components/Delegation";
+import { QuickCaptureForm } from "../components/QuickCaptureForm";
 // import { CreateDelegationForm } from "../components/CreateDelegationForm";
 
 export function Page() {
@@ -46,6 +47,7 @@ export function Page() {
         );
     }, [tasks, tasksById, delegationsById, now]);
 
+    const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
     const [nextActionFilterF, setNextActionFilterF] = useState("");
 
     const timedOutBlockers = useMemo(
@@ -55,7 +57,29 @@ export function Page() {
 
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
+    const [showQuickCapture, setShowQuickCapture] = useState(false);
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            if (e.key === 'q') {
+                e.preventDefault();
+                setShowQuickCapture(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => { window.removeEventListener('keydown', handleKeyDown) };
+    }, []);
+
     return <Stack direction="column">
+        {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }}>
+            <DialogTitle>Quick Capture</DialogTitle>
+            <DialogContent>
+                <QuickCaptureForm allProjects={projects ?? List()} autofocus />
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
+            </DialogActions>
+        </Dialog>}
         <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
                 <Inbox />
@@ -64,7 +88,9 @@ export function Page() {
             <Grid item xs={12} sm={6}>
                 <Card>
                     <CardContent>
-                        <Box sx={{ textAlign: 'center' }}><h1> Timed Out </h1></Box>
+                        <Typography variant="h4" textAlign="center">
+                            Timed Out
+                        </Typography>
                         <Box>
                             {(timedOutBlockers === undefined || projectsById === undefined)
                                 ? <Box>Loading...</Box>
@@ -80,11 +106,13 @@ export function Page() {
 
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}>
-                <h1>Next Actions</h1>
+                <Typography variant="h4" textAlign="center">Next Actions</Typography>
                 <TextField
+                    inputRef={nextActionFilterFieldRef}
                     label="filter"
                     value={nextActionFilterF}
                     onChange={(e) => { setNextActionFilterF(e.target.value) }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { console.log(nextActionFilterFieldRef.current); nextActionFilterFieldRef.current?.blur(); } }}
                     sx={{ maxWidth: '10em' }}
                 />
             </Box>
@@ -118,7 +146,7 @@ export function Page() {
 
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}>
-                <h1>Projects</h1>
+                <Typography variant="h4" textAlign="center">Projects</Typography>
                 {showCreateProjectModal && <CreateProjectModal
                     onHide={() => { setShowCreateProjectModal(false) }}
                     existingProjects={projects ?? List()}
@@ -146,20 +174,21 @@ export function Page() {
         </Box>
 
         <Box sx={{ mt: 4 }}>
-            <Box sx={{ textAlign: 'center' }}><h1> Delegations </h1></Box>
-            <Card><CardContent>
-                {/* <CreateDelegationForm /> */}
-                <Stack direction="column" sx={{ mt: 1 }}>
-                    {blockers === undefined || projectsById === undefined
-                        ? <Box>Loading...</Box>
-                        : blockers
-                            .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
-                            .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                                <Delegation delegation={blocker} projectsById={projectsById} />
-                            </Box>
-                            )}
-                </Stack>
-            </CardContent></Card>
+            <Typography variant="h4" textAlign="center">Delegations</Typography>
+            <Card>
+                <CardContent>
+                    {/* <CreateDelegationForm /> */}
+                    <Stack direction="column" sx={{ mt: 1 }}>
+                        {blockers === undefined || projectsById === undefined
+                            ? <Box>Loading...</Box>
+                            : blockers
+                                .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
+                                .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                                    <Delegation delegation={blocker} projectsById={projectsById} />
+                                </Box>
+                                )}
+                    </Stack>
+                </CardContent></Card>
         </Box>
     </Stack>
 }
