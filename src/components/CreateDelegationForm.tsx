@@ -1,59 +1,65 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
-import { useLoudRequestStatus, useNow, watchReqStatus } from "../common";
+import { useMemo, useState } from "react";
+import { Result, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { addDays, formatDate, startOfDay } from "date-fns";
 import { Button, Stack, TextField } from "@mui/material";
-import { guessTimeoutMillisFromText } from "../common";
 import { parseISOMillis } from "../common";
 
 export function CreateDelegationForm() {
     const createDelegation = useMutation(api.delegations.create);
-    const today = startOfDay(useNow()).getTime();
-    const [text, setText] = useState("");
-    const [timeoutMillis, setTimeoutMillis] = useState(addDays(today, 1).getTime());
+    const todayStr = formatDate(addDays(startOfDay(useNow()), 1), 'yyyy-MM-dd');
+    const [textF, setTextF] = useState("");
+    const [timeoutF, setTimeoutF] = useState(todayStr);
     const [req, setReq] = useLoudRequestStatus();
 
-    const textErr = text.trim() === "" ? "Text is required" : undefined;
-    const timeoutErr = timeoutMillis < today ? "Timeout must be in the future" : undefined;
+    const text: Result<string> = useMemo(() =>
+        textF.trim() === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF },
+        [textF],
+    );
+    const timeoutMillis: Result<number> = useMemo(() => {
+        const millis = parseISOMillis(timeoutF);
+        return millis === undefined
+            ? { type: 'err', message: "Invalid date" }
+            : { type: 'ok', value: millis };
+    }, [timeoutF]);
     const canSubmit = req.type !== 'working'
-        && textErr === undefined
-        && timeoutErr === undefined
-        ;
+        && text.type === 'ok'
+        && timeoutMillis.type === 'ok';
 
     return <form onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            await createDelegation({ text, timeoutMillis });
-            setText("");
+            await createDelegation({ text: text.value, timeoutMillis: timeoutMillis.value });
+            setTextF("");
         })());
     }}>
         <Stack direction="row">
             <TextField
                 label="New text"
-                // no error={!!textErr} because the necessity is obvious
+                // no error={text.type==='err'} because the necessity is obvious
                 sx={{ flexGrow: 1 }}
-                value={text} onChange={(e) => {
-                    const timeout = guessTimeoutMillisFromText(e.target.value);
+                value={textF}
+                onChange={(e) => {
+                    const timeout = parseISOMillis(e.target.value);
                     if (timeout) {
-                        setTimeoutMillis(timeout.timeout.getTime());
-                        setText(timeout.withoutDate);
+                        setTimeoutF(formatDate(timeout, 'yyyy-MM-dd'));
+                        setTextF("");
                     } else {
-                        setText(e.target.value);
+                        setTextF(e.target.value);
                     }
                 }}
             />
             <TextField
                 label="timeout"
-                error={!!timeoutErr}
+                error={timeoutMillis.type === 'err'}
                 type="date"
                 style={{ maxWidth: '10em' }}
-                value={formatDate(timeoutMillis, 'yyyy-MM-dd')}
-                onChange={(e) => {
-                    const timeoutMillis = parseISOMillis(e.target.value);
-                    if (timeoutMillis !== undefined) setTimeoutMillis(timeoutMillis);
-                }}
+                value={timeoutF}
+                onChange={(e) => { setTimeoutF(e.target.value) }}
             />
             <Button variant="contained" type="submit" disabled={!canSubmit}>
                 +delegation

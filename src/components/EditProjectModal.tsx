@@ -1,8 +1,8 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
+import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 
 export function EditProjectModal({ project, onHide }: {
@@ -11,19 +11,30 @@ export function EditProjectModal({ project, onHide }: {
 }) {
     const update = useMutation(api.projects.update);
 
-    const [newName, setNewName] = useState(project.name);
-    const [newColor, setNewColor] = useState(project.color);
+    const [nameF, setNameF] = useState(project.name);
+    const [colorF, setColorF] = useState(project.color ?? '');
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const nameErr = newName.trim() === "" ? "Name is required" : "";
+
+    const name: Result<string> = useMemo(() =>
+        nameF.trim() === ""
+            ? { type: 'err', message: "Name is required" }
+            : { type: 'ok', value: nameF },
+        [nameF],
+    );
+    const color: Result<string> = useMemo(() =>
+        ({ type: 'ok', value: colorF }),
+        [colorF],
+    );
     const canSubmit = saveReq.type !== 'working'
-        && nameErr === "";
+        && name.type === 'ok'
+        && color.type === 'ok'; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
 
     const doSave = () => {
         if (!canSubmit) return;
         watchReqStatus(setSaveReq, (async () => {
-            await update({ id: project._id, name: newName, color: newColor })
+            await update({ id: project._id, name: name.value, color: color.value })
             onHide();
         })())
     };
@@ -36,13 +47,13 @@ export function EditProjectModal({ project, onHide }: {
         <DialogContent>
             <TextField
                 label="Project name"
-                error={!!nameErr}
+                error={name.type === 'err'}
                 sx={{ mt: 1 }}
                 fullWidth
                 autoFocus
                 type="text"
-                value={newName}
-                onChange={(e) => { setNewName(e.target.value); }}
+                value={nameF}
+                onChange={(e) => { setNameF(e.target.value); }}
             />
 
             <FormControl sx={{ mt: 4 }}>
@@ -50,8 +61,8 @@ export function EditProjectModal({ project, onHide }: {
                 <Input
                     type="color"
                     sx={{ minWidth: "5em" }}
-                    value={newColor}
-                    onChange={(e) => { setNewColor(e.target.value); }}
+                    value={colorF}
+                    onChange={(e) => { setColorF(e.target.value); }}
                 />
             </FormControl>
         </DialogContent>

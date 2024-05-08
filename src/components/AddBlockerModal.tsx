@@ -3,9 +3,8 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc } from "../../convex/_generated/dataModel";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
+import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
-import { guessTimeoutMillisFromText } from "../common";
 
 export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     onHide: () => unknown;
@@ -14,7 +13,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     allDelegations: List<Doc<'delegations'>>;
 }) {
     const linkBlocker = useMutation(api.tasks.linkBlocker);
-    const createDelegation = useMutation(api.delegations.create);
+    const createTask = useMutation(api.tasks.create);
 
     const optionsByText = useMemo(() => Map([
         ...allTasks
@@ -25,13 +24,16 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
             .map(b => [b.text, () => linkBlocker({ id: task._id, blocker: { type: 'delegation', id: b._id } })] as [string, () => Promise<null>]),
     ]), [allTasks, allDelegations, linkBlocker, task]);
 
-    const [text, setText] = useState("");
+    const [textF, setTextF] = useState("");
+    const text: Result<string> = useMemo(() => {
+        if (textF.trim() === "") return { type: 'err', message: "Text is required" };
+        return { type: 'ok', value: textF };
+    }, [textF]);
     const [req, setReq] = useLoudRequestStatus();
 
-    const textErr = text.trim() === "" ? "Text is required" : undefined;
     const canSubmit = req.type !== 'working'
-        && textErr === undefined;
-    const selectedOption = optionsByText.get(text);
+        && text.type === 'ok';
+    const selectedOption = text.type === 'ok' ? optionsByText.get(text.value) : undefined;
 
     // HACK: autofocus doesn't work without this ref hack.
     // Probably related to https://github.com/mui/material-ui/issues/33004
@@ -48,30 +50,17 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
         if (!canSubmit) return;
         watchReqStatus(setReq,
             (async () => {
-                const link = optionsByText.get(text);
-                if (link === undefined) {
-                    const timeout = guessTimeoutMillisFromText(text);
-                    if (timeout === undefined) {
-                        throw new Error("unable to guess your new delegation's timeout date; end your text with a date like '2022-12-31'");
-                    }
-                    if (timeout.withoutDate.trim() === "") {
-                        await linkBlocker({
-                            id: task._id,
-                            blocker: { type: 'time', millis: timeout.timeout.getTime() },
-                        });
-                    } else {
-                        const newDelegationId = await createDelegation({
-                            text: timeout.withoutDate,
-                            project: task.project,
-                            timeoutMillis: timeout.timeout.getTime(),
-                        });
-                        await linkBlocker({
-                            id: task._id,
-                            blocker: { type: 'delegation', id: newDelegationId },
-                        });
-                    }
+                if (selectedOption === undefined) {
+                    const newTaskId = await createTask({
+                        text: text.value,
+                        project: task.project,
+                    });
+                    await linkBlocker({
+                        id: task._id,
+                        blocker: { type: 'task', id: newTaskId },
+                    });
                 } else {
-                    await link();
+                    await selectedOption();
                 }
                 onHide();
             })());
@@ -91,8 +80,8 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                 sx={{ my: 1 }}
                 options={optionsByText.keySeq().sort().toArray()}
                 renderInput={(params) => <TextField {...params} label="Blocker" />}
-                inputValue={text}
-                onInputChange={(_, value) => { setText(value ?? ""); }}
+                inputValue={textF}
+                onInputChange={(_, value) => { setTextF(value) }}
             />
         </DialogContent>
         <DialogActions>
@@ -102,7 +91,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
             <Button variant="contained" type="submit" disabled={!canSubmit}>
                 {req.type === 'working' ? 'Linking...' :
                     selectedOption ? 'Link blocker' :
-                        'Create delegation'}
+                        'Create subtask'}
             </Button>
         </DialogActions>
     </Dialog>;

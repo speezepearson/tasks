@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
+import { useMemo, useState } from "react";
+import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
 import Button from "@mui/material/Button";
 import { Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, TextField } from "@mui/material";
 
@@ -9,21 +9,28 @@ export function CreateProjectForm() {
     const create = useMutation(api.projects.create);
     const [showModal, setShowModal] = useState(false);
 
-    const [name, setName] = useState("");
-    const [color, setColor] = useState(randomLightColor);
+    const [nameF, setNameF] = useState("");
+    const [colorF, setColorF] = useState(randomLightColor);
 
     const [req, setReq] = useLoudRequestStatus();
 
-    const nameErr = name.trim() === "" ? "Name is required" : "";
+    const name: Result<string> = useMemo(() =>
+        nameF.trim() === ""
+            ? { type: 'err', message: "Name is required" }
+            : { type: 'ok', value: nameF },
+        [nameF],
+    );
+    const color: Result<string> = { type: 'ok', value: colorF };
     const canSubmit = req.type !== 'working'
-        && nameErr === "";
+        && name.type === 'ok'
+        && color.type === 'ok'; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
 
     const doSave = () => {
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            await create({ name: name, color: color });
+            await create({ name: name.value, color: color.value });
             setShowModal(false);
-            setColor(randomLightColor());
+            setColorF(randomLightColor());
         })());
     }
 
@@ -38,12 +45,12 @@ export function CreateProjectForm() {
             <DialogContent>
                 <TextField
                     label="Project name"
-                    error={!!nameErr}
+                    error={name.type === 'err'}
                     fullWidth
                     autoFocus
                     type="text"
-                    value={name}
-                    onChange={(e) => { setName(e.target.value) }}
+                    value={nameF}
+                    onChange={(e) => { setNameF(e.target.value) }}
                 />
 
                 <FormControl sx={{ mt: 4 }}>
@@ -51,8 +58,8 @@ export function CreateProjectForm() {
                     <TextField
                         type="color"
                         sx={{ minWidth: "5em" }}
-                        value={color}
-                        onChange={(e) => { setColor(e.target.value) }}
+                        value={colorF}
+                        onChange={(e) => { setColorF(e.target.value) }}
                     />
                 </FormControl>
             </DialogContent >

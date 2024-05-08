@@ -5,24 +5,29 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import { CardContent, Stack, TextField, Typography } from "@mui/material";
-import { useState } from "react";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
+import { useMemo, useState } from "react";
+import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
 
 function QuickCaptureForm() {
-    const [text, setText] = useState("");
+    const [textF, setTextF] = useState("");
     const createCapture = useMutation(api.captures.create);
     const [req, setReq] = useLoudRequestStatus();
 
-    const textErr = text.trim() === "" ? "Text is required" : undefined;
+    const text: Result<string> = useMemo(() =>
+        textF.trim() === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF },
+        [textF],
+    );
     const canSubmit = req.type !== 'working'
-        && textErr === undefined;
+        && text.type === 'ok';
 
     return <form onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            await createCapture({ text });
-            setText("");
+            await createCapture({ text: text.value });
+            setTextF("");
         })());
     }}>
         <Stack direction="row" alignItems={'center'}>
@@ -32,8 +37,8 @@ function QuickCaptureForm() {
                 fullWidth
                 autoFocus
                 disabled={req.type === 'working'}
-                value={text}
-                onChange={(e) => { setText(e.target.value) }}
+                value={textF}
+                onChange={(e) => { setTextF(e.target.value) }}
             />
             <Button
                 variant="contained"

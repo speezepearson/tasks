@@ -47,7 +47,7 @@ export function Page() {
         );
     }, [tasks, tasksById, delegationsById, now]);
 
-    const [nextActionFilterField, setNextActionFilterField] = useState("");
+    const [nextActionFilterF, setNextActionFilterF] = useState("");
 
     const timedOutBlockers = useMemo(
         () => blockers?.filter(b => b.completedAtMillis === undefined && b.timeoutMillis && b.timeoutMillis < now.getTime()),
@@ -81,10 +81,10 @@ export function Page() {
             <Box sx={{ textAlign: 'center' }}>
                 <h1>Next Actions</h1>
                 <TextField
-                    value={nextActionFilterField}
-                    onChange={(e) => { setNextActionFilterField(e.target.value) }}
                     label="filter"
-                    style={{ maxWidth: '10em' }}
+                    value={nextActionFilterF}
+                    onChange={(e) => { setNextActionFilterF(e.target.value) }}
+                    sx={{ maxWidth: '10em' }}
                 />
             </Box>
             <Box>
@@ -100,7 +100,7 @@ export function Page() {
                             projectTasks = projectTasks.filter((task) =>
                                 task.completedAtMillis === undefined &&
                                 outstandingBlockers.get(task._id, List()).isEmpty() &&
-                                textMatches(task.text, nextActionFilterField)
+                                textMatches(task.text, nextActionFilterF)
                             );
                             if (projectTasks.isEmpty()) return null;
                             return <ProjectCard

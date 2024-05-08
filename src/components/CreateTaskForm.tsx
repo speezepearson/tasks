@@ -1,13 +1,13 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
-import { ReqStatus, watchReqStatus } from "../common";
+import { ReqStatus, Result, watchReqStatus } from "../common";
 import { Button, Stack, TextField } from "@mui/material";
 
 export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
     const createTask = useMutation(api.tasks.create);
-    const [text, setText] = useState("");
+    const [textF, setTextF] = useState("");
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -19,16 +19,21 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
         }
     }, [justCreated, inputRef]);
 
-    const textErr = text.trim() === "" ? "Text is required" : undefined;
+    const text: Result<string> = useMemo(() =>
+        textF.trim() === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF },
+        [textF],
+    );
     const canSubmit = req.type !== 'working'
-        && textErr === undefined;
+        && text.type === 'ok';
 
     return <form onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            await createTask({ text, project: project?._id });
-            setText("");
+            await createTask({ text: text.value, project: project?._id });
+            setTextF("");
             setJustCreated(true);
         })());
     }}>
@@ -39,8 +44,8 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
                 sx={{ flexGrow: 1 }}
                 ref={inputRef}
                 disabled={req.type === 'working'}
-                value={text}
-                onChange={(e) => { setText(e.target.value); }}
+                value={textF}
+                onChange={(e) => { setTextF(e.target.value); }}
             />
             <Button sx={{ ml: 1, py: 1 }} variant="contained"
                 disabled={!canSubmit}

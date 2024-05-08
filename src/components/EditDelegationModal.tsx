@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useMemo, useState } from "react";
 import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { must, useLoudRequestStatus, watchReqStatus } from "../common";
+import { Result, must, useLoudRequestStatus, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormHelperText, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
@@ -17,21 +17,45 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
 
     const projectsByName = useMemo(() => projectsById.mapEntries(([, project]) => [project.name, project]), [projectsById]);
 
-    const [newText, setNewText] = useState(delegation.text);
-    const [newTimeoutMillis, setNewTimeoutMillis] = useState(delegation.timeoutMillis);
-    const [newProjectId, setNewProjectId] = useState(delegation.project);
+    const [textF, setTextF] = useState(delegation.text);
+    const [timeoutF, setTimeoutF] = useState(formatDate(delegation.timeoutMillis, 'yyyy-MM-dd'));
+    const [projectNameF, setProjectNameF] = useState<string | null>(delegation.project ? must(projectsById.get(delegation.project), "delegation's project does not actually exist").name : null);
+    // This field isn't "really" used -- it's whatever the user's typed in the autocomplete field.
+    // If they have "unsaved" changes (i.e. they've typed since they selected), we disable submit:
+    // it feels kinda janky to be able to submit when you've typed a garbage project name.
+    const [projectNameScratchF, setProjectNameScratchF] = useState('');
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const textErr = newText.trim() === "" ? "Text is required" : undefined;
+    const newText: Result<string> = useMemo(() =>
+        textF.trim() === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF },
+        [textF],
+    );
+    const newTimeoutMillis: Result<number> = useMemo(() => {
+        const millis = parseISOMillis(timeoutF);
+        return millis === undefined
+            ? { type: 'err', message: "Invalid date" }
+            : { type: 'ok', value: millis };
+    }, [timeoutF]);
+    const newProjectId: Result<Id<'projects'> | undefined> = useMemo(() => {
+        if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
+        const project = projectsByName.get(projectNameF);
+        if (project === undefined) return { type: 'err', message: "Project not found" };
+        return { type: 'ok', value: project._id };
+    }, [projectNameF, projectsByName]);
     // don't check whether timeoutMillis is in the future, because we're editing an existing delegation, which might have already timed out
     const canSubmit = saveReq.type !== 'working'
-        && textErr === undefined;
+        && newText.type === 'ok'
+        && newTimeoutMillis.type === 'ok'
+        && newProjectId.type === 'ok'
+        && projectNameScratchF === (projectNameF ?? '');
 
     const doSave = () => {
         if (!canSubmit) return;
         watchReqStatus(setSaveReq, (async () => {
-            await update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis, project: newProjectId });
+            await update({ id: delegation._id, text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value });
             onHide();
         })());
     };
@@ -44,26 +68,24 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
         <DialogContent>
             <TextField
                 label="Text"
-                error={!!textErr}
+                error={newText.type === 'err'}
                 sx={{ mt: 1 }}
                 fullWidth
                 autoFocus
                 type="text"
-                value={newText}
-                onChange={(e) => { setNewText(e.target.value); }}
+                value={textF}
+                onChange={(e) => { setTextF(e.target.value); }}
             />
             <FormHelperText>You can use markdown here.</FormHelperText>
 
             <TextField
                 label="Timeout"
+                error={newTimeoutMillis.type === 'err'}
                 sx={{ mt: 4 }}
                 fullWidth
                 type="date"
-                value={formatDate(newTimeoutMillis, 'yyyy-MM-dd')}
-                onChange={(e) => {
-                    const timeoutMillis = parseISOMillis(e.target.value);
-                    if (timeoutMillis !== undefined) setNewTimeoutMillis(timeoutMillis);
-                }} />
+                value={timeoutF}
+                onChange={(e) => { setTimeoutF(e.target.value) }} />
 
             <Autocomplete
                 sx={{ mt: 4 }}
@@ -72,13 +94,11 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
                     .map((([name]) => name))
                     .toList()
                     .toArray()}
-                renderInput={(params) => <TextField {...params} label="Project" />}
-                value={newProjectId ? must(projectsById.get(newProjectId), "user selected nonexistent Project option in autocomplete").name : null}
-                onChange={(_, projectName) => {
-                    setNewProjectId(projectName
-                        ? must(projectsByName.get(projectName), "user selected nonexistent Project option in autocomplete")._id
-                        : undefined);
-                }}
+                renderInput={(params) => <TextField {...params} label="Project" error={newProjectId.type === 'err'} />}
+                value={projectNameF}
+                onChange={(_, name) => { setProjectNameF(name) }}
+                inputValue={projectNameScratchF}
+                onInputChange={(_, name) => { setProjectNameScratchF(name) }}
             />
         </DialogContent>
 
