@@ -11,6 +11,7 @@ import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { listcmp } from "../common";
 import { QuickCaptureForm } from "../components/QuickCaptureForm";
+import AddIcon from "@mui/icons-material/Add";
 // import { CreateDelegationForm } from "../components/CreateDelegationForm";
 
 export function Page() {
@@ -67,6 +68,9 @@ export function Page() {
     const captures = mapundef(useQuery(api.captures.list, { limit: 10 }), List);
 
     return <Stack direction="column">
+        <Button variant="contained" sx={{ mx: 'auto', width: '10em' }} onClick={() => { setShowQuickCapture(true) }}>
+            <AddIcon />
+        </Button>
         {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }}>
             <DialogTitle>Quick Capture</DialogTitle>
             <DialogContent>
