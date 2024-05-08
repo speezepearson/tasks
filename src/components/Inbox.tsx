@@ -56,7 +56,7 @@ export function Inbox() {
             </Box>
 
             <Stack direction="column">
-                {captures?.map((capture) => <Stack direction="row" key={capture._id}>
+                {captures?.map((capture) => <Stack key={capture._id} direction="row" sx={{ ":hover": { outline: '1px solid gray' } }}>
                     <Typography noWrap>
                         <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
                     </Typography>
