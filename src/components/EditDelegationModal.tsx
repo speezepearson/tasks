@@ -1,9 +1,9 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, watchReqStatus } from "../common";
+import { must, useLoudRequestStatus, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormHelperText, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
@@ -21,12 +21,14 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
     const [newTimeoutMillis, setNewTimeoutMillis] = useState(delegation.timeoutMillis);
     const [newProjectId, setNewProjectId] = useState(delegation.project);
 
-    const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
-    useEffect(() => {
-        if (saveReq.type === 'error') alert(saveReq.message);
-    }, [saveReq]);
+    const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const doSave = () => { watchReqStatus(setSaveReq, update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis, project: newProjectId }).then(onHide)).catch(console.error); };
+    const doSave = () => {
+        watchReqStatus(setSaveReq, (async () => {
+            await update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis, project: newProjectId });
+            onHide();
+        })());
+    };
 
     return <Dialog open fullWidth onClose={onHide} PaperProps={{
         component: 'form',

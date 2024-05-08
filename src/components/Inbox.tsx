@@ -1,20 +1,17 @@
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 import { SingleLineMarkdown } from "./SingleLineMarkdown";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import { CardContent, Stack, TextField, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
-import { ReqStatus, watchReqStatus } from "./common";
+import { useState } from "react";
+import { useLoudRequestStatus, watchReqStatus } from "../common";
 
 function QuickCaptureForm() {
     const [text, setText] = useState("");
     const createCapture = useMutation(api.captures.create);
-    const [req, setReq] = useState<ReqStatus>({ type: "idle" });
-    useEffect(() => {
-        if (req.type === 'error') alert(req.message);
-    }, [req]);
+    const [req, setReq] = useLoudRequestStatus();
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -22,7 +19,7 @@ function QuickCaptureForm() {
         watchReqStatus(setReq, (async () => {
             await createCapture({ text });
             setText("");
-        })()).catch(console.error);
+        })());
     }}>
         <Stack direction="row">
             <TextField
@@ -43,6 +40,8 @@ export function Inbox() {
     const captures = useQuery(api.captures.list, { limit: 10 });
     const archive = useMutation(api.captures.archive);
 
+    const [, setReq] = useLoudRequestStatus();
+
     return <Card>
         <CardContent>
             <Box sx={{ textAlign: 'center' }}>
@@ -53,7 +52,7 @@ export function Inbox() {
             <Stack direction="column">
                 {captures?.map((capture) => <Stack direction="row" key={capture._id}>
                     <Typography noWrap><SingleLineMarkdown>{capture.text}</SingleLineMarkdown></Typography>
-                    <Button size="small" variant="outlined" sx={{ ml: "auto", py: 0 }} onClick={() => { archive({ id: capture._id }).catch(console.error) }}>Archive</Button>
+                    <Button size="small" variant="outlined" sx={{ ml: "auto", py: 0 }} onClick={() => { watchReqStatus(setReq, archive({ id: capture._id })) }}>Archive</Button>
                 </Stack>)}
             </Stack>
         </CardContent>

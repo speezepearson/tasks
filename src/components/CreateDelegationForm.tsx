@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState } from "react";
-import { ReqStatus, watchReqStatus } from "../common";
+import { useState } from "react";
+import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { addDays, formatDate } from "date-fns";
 import { Button, Stack, TextField } from "@mui/material";
 import { guessTimeoutMillisFromText } from "../common";
@@ -11,10 +11,7 @@ export function CreateDelegationForm() {
     const createDelegation = useMutation(api.delegations.create);
     const [text, setText] = useState("");
     const [timeoutMillis, setTimeoutMillis] = useState(addDays(new Date(), 1).getTime());
-    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
-    useEffect(() => {
-        if (req.type === 'error') alert(req.message);
-    }, [req]);
+    const [req, setReq] = useLoudRequestStatus();
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -22,7 +19,7 @@ export function CreateDelegationForm() {
         watchReqStatus(setReq, (async () => {
             await createDelegation({ text, timeoutMillis });
             setText("");
-        })()).catch(console.error);
+        })());
     }}>
         <Stack direction="row">
             <TextField size="small" sx={{ flexGrow: 1 }} value={text} onChange={(e) => {

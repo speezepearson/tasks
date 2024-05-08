@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
-import { api } from "../convex/_generated/api";
-import { useEffect, useState } from "react";
-import { ReqStatus, watchReqStatus } from "./common";
+import { api } from "../../convex/_generated/api";
+import { useState } from "react";
+import { useLoudRequestStatus, watchReqStatus } from "../common";
 import Button from "@mui/material/Button";
 import { Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, TextField } from "@mui/material";
 
@@ -12,17 +12,14 @@ export function CreateProjectForm() {
     const [name, setName] = useState("");
     const [color, setColor] = useState(randomLightColor);
 
-    const [req, setReq] = useState<ReqStatus>({ type: "idle" });
-    useEffect(() => {
-        if (req.type === 'error') alert(req.message);
-    }, [req]);
+    const [req, setReq] = useLoudRequestStatus();
 
     const doSave = () => {
         watchReqStatus(setReq, (async () => {
             await create({ name: name, color: color });
             setShowModal(false);
             setColor(randomLightColor());
-        })()).catch(console.error)
+        })());
     }
 
     return <>

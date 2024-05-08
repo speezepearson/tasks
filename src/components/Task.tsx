@@ -1,11 +1,11 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, useNow, watchReqStatus } from "../common";
+import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
-import { SingleLineMarkdown } from "../SingleLineMarkdown";
+import { SingleLineMarkdown } from "./SingleLineMarkdown";
 import { Box, Button, Checkbox, Stack, Typography } from "@mui/material";
 import { AddBlockerModal } from "./AddBlockerModal";
 import { getOutstandingBlockers } from "../common";
@@ -25,10 +25,7 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
     const [showBlockerModal, setShowBlockerModal] = useState(false);
 
     const now = useNow();
-    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
-    useEffect(() => {
-        if (req.type === 'error') alert(req.message);
-    }, [req]);
+    const [req, setReq] = useLoudRequestStatus();
 
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
     const blocked = outstandingBlockers.size > 0;
@@ -42,8 +39,7 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                 checked={task.completedAtMillis !== undefined}
                 onChange={(e) => {
                     if (req.type === 'working') return;
-                    watchReqStatus(setReq, setCompleted({ id: task._id, isCompleted: e.target.checked }))
-                        .catch(console.error);
+                    watchReqStatus(setReq, setCompleted({ id: task._id, isCompleted: e.target.checked }));
                 }}
                 style={{ width: '1em', height: '1em' }}
                 disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
@@ -64,7 +60,7 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                     {outstandingBlockers.map((blocker) => {
                         const unlinkButton = <Button
                             size="small" sx={{ py: 0 }} variant="outlined"
-                            onClick={() => { unlinkBlocker({ id: task._id, blocker }).catch(console.error); }}>unlink</Button>;
+                            onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}>unlink</Button>;
                         switch (blocker.type) {
                             case "task":
                                 return <Box key={blocker.id}>
@@ -82,7 +78,7 @@ export function Task({ task, projectsById, tasksById, delegationsById: delegatio
                                     return <Box key={blocker.id}>
                                         <Checkbox
                                             checked={delegation.completedAtMillis !== undefined}
-                                            onChange={(e) => { setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked }).catch(console.error); }}
+                                            onChange={(e) => { watchReqStatus(setReq, setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked })) }}
                                             style={{ width: '1em', height: '1em' }} />
                                         {" "}
                                         <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>

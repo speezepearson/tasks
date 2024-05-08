@@ -1,9 +1,9 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, watchReqStatus } from "../common";
+import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { CreateTaskForm } from "./CreateTaskForm";
@@ -22,10 +22,7 @@ export function ProjectCard({
 }) {
 
     const archive = useMutation(api.projects.archive);
-    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
-    useEffect(() => {
-        if (req.type === 'error') alert(req.message);
-    }, [req]);
+    const [, setReq] = useLoudRequestStatus();
 
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const [editing, setEditing] = useState(false);
@@ -57,7 +54,7 @@ export function ProjectCard({
             </AccordionDetails>
             {project && <AccordionActions>
                 <Button size="small" onClick={() => {
-                    watchReqStatus(setReq, archive({ id: project._id })).catch(console.error);
+                    watchReqStatus(setReq, archive({ id: project._id }));
                 }}>Archive Project</Button>
                 <Button size="small" onClick={() => { setEditing(true); }}>Edit Project</Button>
             </AccordionActions>}

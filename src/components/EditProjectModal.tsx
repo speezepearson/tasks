@@ -1,8 +1,8 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
-import { ReqStatus, watchReqStatus } from "../common";
+import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, TextField } from "@mui/material";
 
 export function EditProjectModal({ project, onHide }: {
@@ -14,12 +14,14 @@ export function EditProjectModal({ project, onHide }: {
     const [newName, setNewName] = useState(project.name);
     const [newColor, setNewColor] = useState(project.color);
 
-    const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
-    useEffect(() => {
-        if (saveReq.type === 'error') alert(saveReq.message);
-    }, [saveReq]);
+    const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const doSave = () => { watchReqStatus(setSaveReq, update({ id: project._id, name: newName, color: newColor }).then(onHide)).catch(console.error); };
+    const doSave = () => {
+        watchReqStatus(setSaveReq, (async () => {
+            await update({ id: project._id, name: newName, color: newColor })
+            onHide();
+        })())
+    };
 
     return <Dialog open fullWidth onClose={onHide} PaperProps={{
         component: 'form',

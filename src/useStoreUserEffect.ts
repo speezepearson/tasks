@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
-import { errToString } from "./common";
 
 export function useStoreUserEffect() {
     const { isLoading, isAuthenticated } = useConvexAuth();
@@ -27,7 +26,7 @@ export function useStoreUserEffect() {
             const id = await storeUser();
             setUserId(id);
         }
-        createUser().catch(e => { alert(errToString(e)) });
+        createUser().catch(console.log);
         return () => { setUserId(null) };
         // Make sure the effect reruns if the user logs in with
         // a different identity

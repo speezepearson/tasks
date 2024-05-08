@@ -1,4 +1,4 @@
-import { Inbox } from "../Inbox";
+import { Inbox } from "../components/Inbox";
 
 export function Page() {
     return <Inbox />

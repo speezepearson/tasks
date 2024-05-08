@@ -1,10 +1,10 @@
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useState } from "react";
-import { Map } from "immutable";
-import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, watchReqStatus } from "../common";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormHelperText, TextField } from "@mui/material";
+import { useMutation } from "convex/react";
+import { Map } from "immutable";
+import { useMemo, useState } from "react";
+import { api } from "../../convex/_generated/api";
+import { Doc, Id } from "../../convex/_generated/dataModel";
+import { must, useLoudRequestStatus, watchReqStatus } from "../common";
 
 export function EditTaskModal({ task, projectsById, onHide }: {
     task: Doc<'tasks'>;
@@ -18,12 +18,14 @@ export function EditTaskModal({ task, projectsById, onHide }: {
     const [newText, setNewText] = useState(task.text);
     const [newProjectId, setNewProjectId] = useState(task.project);
 
-    const [saveReq, setSaveReq] = useState<ReqStatus>({ type: "idle" });
-    useEffect(() => {
-        if (saveReq.type === 'error') alert(saveReq.message);
-    }, [saveReq]);
+    const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const doSave = () => { watchReqStatus(setSaveReq, update({ id: task._id, text: newText, project: newProjectId }).then(onHide)).catch(console.error); };
+    const doSave = () => {
+        watchReqStatus(setSaveReq, (async () => {
+            await update({ id: task._id, text: newText, project: newProjectId });
+            onHide();
+        })());
+    };
 
     return <Dialog open onClose={onHide} fullWidth PaperProps={{
         component: 'form',

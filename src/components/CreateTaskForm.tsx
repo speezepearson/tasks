@@ -27,7 +27,7 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
             await createTask({ text, project: project?._id });
             setText("");
             setJustCreated(true);
-        })()).catch(console.error);
+        })());
     }}>
         <Stack direction="row">
             <TextField size="small" sx={{ flexGrow: 1 }} ref={inputRef} disabled={req.type === 'working'} value={text} onChange={(e) => { setText(e.target.value); }} label="New task text" />

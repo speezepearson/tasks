@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc } from "../../convex/_generated/dataModel";
-import { ReqStatus, watchReqStatus } from "../common";
+import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { guessTimeoutMillisFromText } from "../common";
 
@@ -26,10 +26,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     ]), [allTasks, allDelegations, linkBlocker, task]);
 
     const [text, setText] = useState("");
-    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
-    useEffect(() => {
-        if (req.type === 'error') alert(req.message);
-    }, [req]);
+    const [req, setReq] = useLoudRequestStatus();
 
     // HACK: autofocus doesn't work without this ref hack.
     // Probably related to https://github.com/mui/material-ui/issues/33004
@@ -69,7 +66,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                     await link();
                 }
                 onHide();
-            })()).catch(console.error);
+            })());
     };
 
     return <Dialog open onClose={onHide} fullWidth PaperProps={{

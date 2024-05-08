@@ -10,19 +10,37 @@ export type ReqStatus =
     | { type: 'idle' }
     | { type: 'error'; message: string };
 
-export async function watchReqStatus<T>(
+/**
+ * Watch a promise and set the request status accordingly.
+ * 
+ * If the promise succeeds, the request status is set to `idle`.
+ * If the promise fails, the request status is set to `error`.
+ */
+export function watchReqStatus<T>(
     setReqStatus: (reqStatus: ReqStatus) => void,
     promise: Promise<T>,
-): Promise<T> {
-    setReqStatus({ type: 'working' });
-    try {
-        const result = await promise;
-        setReqStatus({ type: 'idle' });
-        return result;
-    } catch (e) {
-        setReqStatus({ type: 'error', message: errToString(e) });
-        throw e;
-    }
+) {
+    (async () => {
+        setReqStatus({ type: 'working' });
+        try {
+            const result = await promise;
+            setReqStatus({ type: 'idle' });
+            return result;
+        } catch (e) {
+            setReqStatus({ type: 'error', message: errToString(e) });
+        }
+    })().catch(e => {
+        console.error(e);
+        alert(errToString(e));
+    });
+}
+
+export function useLoudRequestStatus(): [ReqStatus, (r: ReqStatus) => void] {
+    const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
+    useEffect(() => {
+        if (req.type === 'error') alert(req.message);
+    }, [req]);
+    return [req, setReq];
 }
 
 export function errToString(e: unknown): string {
@@ -125,5 +143,9 @@ export function parseISOMillis(date: string): number | undefined {
     } catch (e) {
         return undefined;
     }
+}
+
+export function alertOnErr<T>(promise: Promise<T>): void {
+    promise.catch((e) => { alert(errToString(e)); throw e; });
 }
 
