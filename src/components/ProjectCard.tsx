@@ -1,9 +1,6 @@
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { Accordion, AccordionActions, AccordionDetails, AccordionSummary, Box, Button, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { CreateTaskForm } from "./CreateTaskForm";
@@ -20,9 +17,6 @@ export function ProjectCard({
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
 }) {
-
-    const archive = useMutation(api.projects.archive);
-    const [, setReq] = useLoudRequestStatus();
 
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const [editing, setEditing] = useState(false);
@@ -56,9 +50,6 @@ export function ProjectCard({
                 </Box>
             </AccordionDetails>
             {project && <AccordionActions>
-                <Button onClick={() => {
-                    watchReqStatus(setReq, archive({ id: project._id }));
-                }}>Archive Project</Button>
                 <Button onClick={() => { setEditing(true); }}>
                     Edit Project
                 </Button>

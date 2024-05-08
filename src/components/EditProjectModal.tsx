@@ -9,13 +9,13 @@ export function EditProjectModal({ project, onHide }: {
     project: Doc<'projects'>;
     onHide: () => unknown;
 }) {
+    const archive = useMutation(api.projects.archive);
     const update = useMutation(api.projects.update);
 
     const [nameF, setNameF] = useState(project.name);
     const [colorF, setColorF] = useState(project.color ?? '');
 
-    const [saveReq, setSaveReq] = useLoudRequestStatus();
-
+    const [req, setReq] = useLoudRequestStatus();
 
     const name: Result<string> = useMemo(() =>
         nameF.trim() === ""
@@ -27,13 +27,13 @@ export function EditProjectModal({ project, onHide }: {
         ({ type: 'ok', value: colorF }),
         [colorF],
     );
-    const canSubmit = saveReq.type !== 'working'
+    const canSubmit = req.type !== 'working'
         && name.type === 'ok'
         && color.type === 'ok'; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
 
     const doSave = () => {
         if (!canSubmit) return;
-        watchReqStatus(setSaveReq, (async () => {
+        watchReqStatus(setReq, (async () => {
             await update({ id: project._id, name: name.value, color: color.value })
             onHide();
         })())
@@ -65,15 +65,21 @@ export function EditProjectModal({ project, onHide }: {
                     onChange={(e) => { setColorF(e.target.value); }}
                 />
             </FormControl>
+
         </DialogContent>
 
+
         <DialogActions>
+            <Button variant="outlined" color="warning" onClick={() => {
+                watchReqStatus(setReq, archive({ id: project._id }));
+                onHide();
+            }}>Archive Project</Button>
             <Button variant="outlined" onClick={onHide}>
                 Close
             </Button>
 
             <Button variant="contained" type="submit" disabled={!canSubmit}>
-                {saveReq.type === 'working' ? 'Saving...' : 'Save'}
+                {req.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
         </DialogActions>
     </Dialog>;
