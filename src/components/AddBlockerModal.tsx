@@ -28,6 +28,11 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     const [text, setText] = useState("");
     const [req, setReq] = useLoudRequestStatus();
 
+    const textErr = text.trim() === "" ? "Text is required" : undefined;
+    const canSubmit = req.type !== 'working'
+        && textErr === undefined;
+    const selectedOption = optionsByText.get(text);
+
     // HACK: autofocus doesn't work without this ref hack.
     // Probably related to https://github.com/mui/material-ui/issues/33004
     // but the `disableRestoreFocus` workaround doesn't work here --
@@ -40,6 +45,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     }, [inputRef]);
 
     const doSave = () => {
+        if (!canSubmit) return;
         watchReqStatus(setReq,
             (async () => {
                 const link = optionsByText.get(text);
@@ -85,16 +91,18 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                 sx={{ my: 1 }}
                 options={optionsByText.keySeq().sort().toArray()}
                 renderInput={(params) => <TextField {...params} label="Blocker" />}
-                value={text}
-                onChange={(_, value) => { setText(value ?? ""); }}
+                inputValue={text}
+                onInputChange={(_, value) => { setText(value ?? ""); }}
             />
         </DialogContent>
         <DialogActions>
-            {/* <Button variant="outlined" onClick={onHide}>
-            Close
-        </Button> */}
-            <Button variant="contained" type="submit">
-                {req.type === 'working' ? 'Linking...' : 'Link blocker'}
+            <Button variant="outlined" onClick={onHide}>
+                Close
+            </Button>
+            <Button variant="contained" type="submit" disabled={!canSubmit}>
+                {req.type === 'working' ? 'Linking...' :
+                    selectedOption ? 'Link blocker' :
+                        'Create delegation'}
             </Button>
         </DialogActions>
     </Dialog>;

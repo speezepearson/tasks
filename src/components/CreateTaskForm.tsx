@@ -12,7 +12,6 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const [justCreated, setJustCreated] = useState(false);
-
     useEffect(() => {
         if (justCreated) {
             setJustCreated(false);
@@ -20,9 +19,13 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
         }
     }, [justCreated, inputRef]);
 
+    const textErr = text.trim() === "" ? "Text is required" : undefined;
+    const canSubmit = req.type !== 'working'
+        && textErr === undefined;
+
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (req.type === 'working') return;
+        if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
             await createTask({ text, project: project?._id });
             setText("");
@@ -32,6 +35,7 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
         <Stack direction="row" alignItems={'center'}>
             <TextField
                 label="New text"
+                // no error={!!textErr} because the necessity is obvious
                 sx={{ flexGrow: 1 }}
                 ref={inputRef}
                 disabled={req.type === 'working'}
@@ -39,7 +43,7 @@ export function CreateTaskForm({ project }: { project?: Doc<'projects'>; }) {
                 onChange={(e) => { setText(e.target.value); }}
             />
             <Button sx={{ ml: 1, py: 1 }} variant="contained"
-                disabled={req.type === 'working'}
+                disabled={!canSubmit}
                 type="submit"
             >
                 +task

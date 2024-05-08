@@ -21,10 +21,9 @@ const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 const theme = createTheme({
   components: {
     MuiButton: {
-      styleOverrides: { root: { paddingTop: 0, paddingBottom: 0 } },
       defaultProps: {
         size: 'small',
-      }
+      },
     },
     MuiTextField: {
       defaultProps: {

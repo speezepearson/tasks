@@ -16,7 +16,12 @@ export function EditProjectModal({ project, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
+    const nameErr = newName.trim() === "" ? "Name is required" : "";
+    const canSubmit = saveReq.type !== 'working'
+        && nameErr === "";
+
     const doSave = () => {
+        if (!canSubmit) return;
         watchReqStatus(setSaveReq, (async () => {
             await update({ id: project._id, name: newName, color: newColor })
             onHide();
@@ -31,6 +36,7 @@ export function EditProjectModal({ project, onHide }: {
         <DialogContent>
             <TextField
                 label="Project name"
+                error={!!nameErr}
                 sx={{ mt: 1 }}
                 fullWidth
                 autoFocus
@@ -55,7 +61,7 @@ export function EditProjectModal({ project, onHide }: {
                 Close
             </Button>
 
-            <Button variant="contained" type="submit">
+            <Button variant="contained" type="submit" disabled={!canSubmit}>
                 {saveReq.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
         </DialogActions>

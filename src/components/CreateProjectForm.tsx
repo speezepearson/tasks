@@ -14,7 +14,12 @@ export function CreateProjectForm() {
 
     const [req, setReq] = useLoudRequestStatus();
 
+    const nameErr = name.trim() === "" ? "Name is required" : "";
+    const canSubmit = req.type !== 'working'
+        && nameErr === "";
+
     const doSave = () => {
+        if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
             await create({ name: name, color: color });
             setShowModal(false);
@@ -33,6 +38,7 @@ export function CreateProjectForm() {
             <DialogContent>
                 <TextField
                     label="Project name"
+                    error={!!nameErr}
                     fullWidth
                     autoFocus
                     type="text"
@@ -56,7 +62,7 @@ export function CreateProjectForm() {
                     Close
                 </Button>
 
-                <Button variant="contained" type="submit">
+                <Button variant="contained" type="submit" disabled={!canSubmit}>
                     {req.type === 'working' ? 'Creating...' : 'Create project'}
                 </Button>
             </DialogActions>

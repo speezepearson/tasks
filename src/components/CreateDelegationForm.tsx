@@ -1,21 +1,29 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
-import { useLoudRequestStatus, watchReqStatus } from "../common";
-import { addDays, formatDate } from "date-fns";
+import { useLoudRequestStatus, useNow, watchReqStatus } from "../common";
+import { addDays, formatDate, startOfDay } from "date-fns";
 import { Button, Stack, TextField } from "@mui/material";
 import { guessTimeoutMillisFromText } from "../common";
 import { parseISOMillis } from "../common";
 
 export function CreateDelegationForm() {
     const createDelegation = useMutation(api.delegations.create);
+    const today = startOfDay(useNow()).getTime();
     const [text, setText] = useState("");
-    const [timeoutMillis, setTimeoutMillis] = useState(addDays(new Date(), 1).getTime());
+    const [timeoutMillis, setTimeoutMillis] = useState(addDays(today, 1).getTime());
     const [req, setReq] = useLoudRequestStatus();
+
+    const textErr = text.trim() === "" ? "Text is required" : undefined;
+    const timeoutErr = timeoutMillis < today ? "Timeout must be in the future" : undefined;
+    const canSubmit = req.type !== 'working'
+        && textErr === undefined
+        && timeoutErr === undefined
+        ;
 
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (req.type === 'working') return;
+        if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
             await createDelegation({ text, timeoutMillis });
             setText("");
@@ -24,6 +32,7 @@ export function CreateDelegationForm() {
         <Stack direction="row">
             <TextField
                 label="New text"
+                // no error={!!textErr} because the necessity is obvious
                 sx={{ flexGrow: 1 }}
                 value={text} onChange={(e) => {
                     const timeout = guessTimeoutMillisFromText(e.target.value);
@@ -37,6 +46,7 @@ export function CreateDelegationForm() {
             />
             <TextField
                 label="timeout"
+                error={!!timeoutErr}
                 type="date"
                 style={{ maxWidth: '10em' }}
                 value={formatDate(timeoutMillis, 'yyyy-MM-dd')}
@@ -45,7 +55,7 @@ export function CreateDelegationForm() {
                     if (timeoutMillis !== undefined) setTimeoutMillis(timeoutMillis);
                 }}
             />
-            <Button variant="contained" type="submit">
+            <Button variant="contained" type="submit" disabled={!canSubmit}>
                 +delegation
             </Button>
         </Stack>

@@ -13,9 +13,13 @@ function QuickCaptureForm() {
     const createCapture = useMutation(api.captures.create);
     const [req, setReq] = useLoudRequestStatus();
 
+    const textErr = text.trim() === "" ? "Text is required" : undefined;
+    const canSubmit = req.type !== 'working'
+        && textErr === undefined;
+
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (req.type === 'working') return;
+        if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
             await createCapture({ text });
             setText("");
@@ -24,6 +28,7 @@ function QuickCaptureForm() {
         <Stack direction="row" alignItems={'center'}>
             <TextField
                 label="Capture text"
+                // no error={!!textErr} because the necessity is obvious
                 fullWidth
                 autoFocus
                 disabled={req.type === 'working'}
@@ -32,8 +37,8 @@ function QuickCaptureForm() {
             />
             <Button
                 variant="contained"
-                sx={{ py: 1 }}
-                disabled={req.type === 'working'}
+                sx={{ ml: 1, py: 1 }}
+                disabled={!canSubmit}
                 type="submit"
             >
                 +note
@@ -55,7 +60,7 @@ export function Inbox() {
                 <QuickCaptureForm />
             </Box>
 
-            <Stack direction="column">
+            <Stack direction="column" sx={{ mt: 1 }}>
                 {captures?.map((capture) => <Stack key={capture._id} direction="row" sx={{ ":hover": { outline: '1px solid gray' } }}>
                     <Typography noWrap>
                         <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>

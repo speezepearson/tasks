@@ -23,7 +23,13 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
+    const textErr = newText.trim() === "" ? "Text is required" : undefined;
+    // don't check whether timeoutMillis is in the future, because we're editing an existing delegation, which might have already timed out
+    const canSubmit = saveReq.type !== 'working'
+        && textErr === undefined;
+
     const doSave = () => {
+        if (!canSubmit) return;
         watchReqStatus(setSaveReq, (async () => {
             await update({ id: delegation._id, text: newText, timeoutMillis: newTimeoutMillis, project: newProjectId });
             onHide();
@@ -38,6 +44,7 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
         <DialogContent>
             <TextField
                 label="Text"
+                error={!!textErr}
                 sx={{ mt: 1 }}
                 fullWidth
                 autoFocus
@@ -80,7 +87,7 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
                 Close
             </Button>
 
-            <Button variant="contained" type="submit">
+            <Button variant="contained" type="submit" disabled={!canSubmit}>
                 {saveReq.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
         </DialogActions>

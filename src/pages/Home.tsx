@@ -143,15 +143,17 @@ export function Page() {
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}><h1> Delegations </h1></Box>
             <Card><CardContent>
-                {blockers === undefined || projectsById === undefined
-                    ? <Box>Loading...</Box>
-                    : blockers
-                        .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
-                        .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                            <Delegation delegation={blocker} projectsById={projectsById} />
-                        </Box>
-                        )}
                 <CreateDelegationForm />
+                <Stack direction="column" sx={{ mt: 1 }}>
+                    {blockers === undefined || projectsById === undefined
+                        ? <Box>Loading...</Box>
+                        : blockers
+                            .sortBy(b => [b.completedAtMillis !== undefined, b.timeoutMillis, b.text], listcmp)
+                            .map((blocker) => <Box key={blocker._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                                <Delegation delegation={blocker} projectsById={projectsById} />
+                            </Box>
+                            )}
+                </Stack>
             </CardContent></Card>
         </Box>
     </Stack>

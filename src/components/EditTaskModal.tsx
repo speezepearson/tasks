@@ -20,7 +20,12 @@ export function EditTaskModal({ task, projectsById, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
+    const textErr = newText.trim() === "" ? "Text is required" : undefined;
+    const canSubmit = saveReq.type !== 'working'
+        && textErr === undefined;
+
     const doSave = () => {
+        if (!canSubmit) return;
         watchReqStatus(setSaveReq, (async () => {
             await update({ id: task._id, text: newText, project: newProjectId });
             onHide();
@@ -36,6 +41,7 @@ export function EditTaskModal({ task, projectsById, onHide }: {
             <FormControl fullWidth>
                 <TextField
                     label="Task text"
+                    error={!!textErr}
                     sx={{ mt: 1 }}
                     autoFocus
                     type="text"
@@ -67,7 +73,7 @@ export function EditTaskModal({ task, projectsById, onHide }: {
                 Close
             </Button>
 
-            <Button variant="contained" type="submit">
+            <Button variant="contained" type="submit" disabled={!canSubmit}>
                 {saveReq.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
         </DialogActions>
