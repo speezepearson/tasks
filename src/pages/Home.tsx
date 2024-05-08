@@ -64,6 +64,8 @@ export function Page() {
         return () => { window.removeEventListener('keydown', handleKeyDown) };
     }, []);
 
+    const captures = mapundef(useQuery(api.captures.list, { limit: 10 }), List);
+
     return <Stack direction="column">
         {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }}>
             <DialogTitle>Quick Capture</DialogTitle>
@@ -74,7 +76,7 @@ export function Page() {
                 <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
             </DialogActions>
         </Dialog>}
-        <Inbox />
+        {captures && captures.size > 0 && <Inbox captures={captures} />}
 
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}>

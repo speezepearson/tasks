@@ -5,9 +5,10 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import { CardContent, Stack, Typography } from "@mui/material";
 import { useLoudRequestStatus, watchReqStatus } from "../common";
+import { Doc } from "../../convex/_generated/dataModel";
+import { List } from "immutable";
 
-export function Inbox() {
-    const captures = useQuery(api.captures.list, { limit: 10 });
+export function Inbox({ captures }: { captures: List<Doc<'captures'>> }) {
     const archive = useMutation(api.captures.archive);
 
     const [, setReq] = useLoudRequestStatus();
