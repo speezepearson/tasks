@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { SingleLineMarkdown } from "./SingleLineMarkdown";
 import Button from "@mui/material/Button";
@@ -20,7 +20,7 @@ export function Inbox({ captures }: { captures: List<Doc<'captures'>> }) {
             </Typography>
 
             <Stack direction="column" sx={{ mt: 1 }}>
-                {captures?.map((capture) => <Stack key={capture._id} direction="row" sx={{ ":hover": { outline: '1px solid gray' } }}>
+                {captures.map((capture) => <Stack key={capture._id} direction="row" sx={{ ":hover": { outline: '1px solid gray' } }}>
                     <Typography noWrap>
                         <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
                     </Typography>
