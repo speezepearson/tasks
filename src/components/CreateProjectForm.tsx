@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useMemo, useState } from "react";
 import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
 import Button from "@mui/material/Button";
-import { Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, TextField } from "@mui/material";
+import { Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 
 export function CreateProjectForm() {
     const create = useMutation(api.projects.create);
@@ -41,10 +41,11 @@ export function CreateProjectForm() {
         }}
             disableRestoreFocus // HACK: autofocus doesn't work without this: https://github.com/mui/material-ui/issues/33004
         >
-            <DialogTitle>Edit project</DialogTitle>
+            <DialogTitle>Create project</DialogTitle>
             <DialogContent>
                 <TextField
                     label="Project name"
+                    sx={{ mt: 1 }}
                     error={name.type === 'err'}
                     fullWidth
                     autoFocus
@@ -55,11 +56,11 @@ export function CreateProjectForm() {
 
                 <FormControl sx={{ mt: 4 }}>
                     <InputLabel>Color</InputLabel>
-                    <TextField
+                    <Input
                         type="color"
                         sx={{ minWidth: "5em" }}
                         value={colorF}
-                        onChange={(e) => { setColorF(e.target.value) }}
+                        onChange={(e) => { setColorF(e.target.value); }}
                     />
                 </FormControl>
             </DialogContent >
