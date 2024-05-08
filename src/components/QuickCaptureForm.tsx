@@ -101,7 +101,13 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
         }
     }, [autofocus, omniboxRef, isFirstLoad])
 
-    return <Box>
+    return <Box component="form" onSubmit={(e) => {
+        e.preventDefault();
+        if (!canCreateCapture) return;
+        watchReqStatus(setReq, createCapture({
+            text: text.value,
+        }).then(() => { done("Captured!") }));
+    }}>
         <Stack direction="column">
             <TextField
                 label="New text"
@@ -115,12 +121,9 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
             />
             <Grid container justifyContent="end" sx={{ mt: 1 }}>
                 {!fixedProject && <><Grid item xs={3}>
-                    <Button fullWidth variant="outlined" disabled={!canCreateCapture} onClick={() => {
-                        if (!canCreateCapture) return;
-                        watchReqStatus(setReq, createCapture({
-                            text: text.value,
-                        }).then(() => { done("Captured!") }));
-                    }}>Capture</Button>
+                    <Button fullWidth variant="contained" type="submit" disabled={!canCreateCapture}>
+                        Capture
+                    </Button>
                 </Grid>
                     <Grid item xs={1}>
                         <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>
