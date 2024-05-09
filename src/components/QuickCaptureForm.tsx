@@ -36,8 +36,10 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
     );
 
     const text: Result<string> = useMemo(() => {
-        if (textF.trim() === "") return { type: 'err', message: "Text is required" };
-        return { type: 'ok', value: textF };
+        const text = textF.trim();
+        return text === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF };
     }, [textF]);
     const timeoutMillis: Result<number> = useMemo(() => {
         const n = parseISOMillis(timeoutF);

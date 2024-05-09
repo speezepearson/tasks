@@ -19,12 +19,12 @@ export function CreateTaskForm({ project }: { project: Doc<'projects'>; }) {
         }
     }, [justCreated, inputRef]);
 
-    const text: Result<string> = useMemo(() =>
-        textF.trim() === ""
+    const text: Result<string> = useMemo(() => {
+        const text = textF.trim();
+        return text === ""
             ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF },
-        [textF],
-    );
+            : { type: 'ok', value: textF };
+    }, [textF]);
     const canSubmit = req.type !== 'working'
         && text.type === 'ok';
 

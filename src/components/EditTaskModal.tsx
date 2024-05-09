@@ -24,12 +24,12 @@ export function EditTaskModal({ task, projectsById, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const text: Result<string> = useMemo(() =>
-        textF.trim() === ""
+    const text: Result<string> = useMemo(() => {
+        const text = textF.trim();
+        return text === ""
             ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF },
-        [textF],
-    );
+            : { type: 'ok', value: textF };
+    }, [textF]);
     const projectId: Result<Id<'projects'> | undefined> = useMemo(() => {
         if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
         const project = projectsByName.get(projectNameF);

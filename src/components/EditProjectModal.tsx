@@ -19,12 +19,12 @@ export function EditProjectModal({ project, existingProjects, onHide }: {
 
     const [req, setReq] = useLoudRequestStatus();
 
-    const name: Result<string> = useMemo(
-        () => {
-            if (nameF.trim() === "") return { type: 'err', message: "Name is required" };
-            if (existingProjects.find(p => p._id !== project._id && p.name === nameF)) return { type: 'err', message: "Project with this name already exists" };
-            return { type: 'ok', value: nameF }
-        }, [nameF, existingProjects, project]);
+    const name: Result<string> = useMemo(() => {
+        const name = nameF.trim();
+        if (name === "") return { type: 'err', message: "Name is required" };
+        if (existingProjects.find(p => p.name === name)) return { type: 'err', message: "Project with this name already exists" };
+        return { type: 'ok', value: name }
+    }, [nameF, existingProjects]);
     const color: Result<string> = useMemo(() =>
         ({ type: 'ok', value: colorF }),
         [colorF],

@@ -27,12 +27,12 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const newText: Result<string> = useMemo(() =>
-        textF.trim() === ""
+    const newText: Result<string> = useMemo(() => {
+        const text = textF.trim();
+        return text === ""
             ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF },
-        [textF],
-    );
+            : { type: 'ok', value: textF };
+    }, [textF]);
     const newTimeoutMillis: Result<number> = useMemo(() => {
         const millis = parseISOMillis(timeoutF);
         return millis === undefined

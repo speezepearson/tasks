@@ -14,12 +14,12 @@ export function CreateDelegationForm({ project }: { project: Doc<'projects'> }) 
     const [timeoutF, setTimeoutF] = useState(todayStr);
     const [req, setReq] = useLoudRequestStatus();
 
-    const text: Result<string> = useMemo(() =>
-        textF.trim() === ""
+    const text: Result<string> = useMemo(() => {
+        const text = textF.trim();
+        return text === ""
             ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF },
-        [textF],
-    );
+            : { type: 'ok', value: textF };
+    }, [textF]);
     const timeoutMillis: Result<number> = useMemo(() => {
         const millis = parseISOMillis(timeoutF);
         return millis === undefined
