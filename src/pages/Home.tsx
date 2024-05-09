@@ -56,9 +56,15 @@ export function Page() {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-            if (e.key === 'q') {
-                e.preventDefault();
-                setShowQuickCapture(true);
+            switch (e.key) {
+                case 'q':
+                    e.preventDefault();
+                    setShowQuickCapture(true);
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    nextActionFilterFieldRef.current?.focus();
+                    break;
             }
         };
         window.addEventListener('keydown', handleKeyDown);
