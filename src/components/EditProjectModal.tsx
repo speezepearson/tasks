@@ -1,8 +1,8 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useMemo, useState } from "react";
+import { useCallback } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
-import { Result, useLoudRequestStatus, watchReqStatus } from "../common";
+import { useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 import { List } from "immutable";
 
@@ -14,24 +14,20 @@ export function EditProjectModal({ project, existingProjects, onHide }: {
     const archive = useMutation(api.projects.archive);
     const update = useMutation(api.projects.update);
 
-    const [nameF, setNameF] = useState(project.name);
-    const [colorF, setColorF] = useState(project.color ?? '');
-
-    const [req, setReq] = useLoudRequestStatus();
-
-    const name: Result<string> = useMemo(() => {
+    const [name, nameF, setNameF] = useParsed(project.name, useCallback(nameF => {
         const name = nameF.trim();
         if (name === "") return { type: 'err', message: "Name is required" };
         if (existingProjects.find(p => p.name === name)) return { type: 'err', message: "Project with this name already exists" };
         return { type: 'ok', value: name }
-    }, [nameF, existingProjects]);
-    const color: Result<string> = useMemo(() =>
-        ({ type: 'ok', value: colorF }),
-        [colorF],
-    );
+    }, [existingProjects]));
+
+    const [color, colorF, setColorF] = useParsed(project.color ?? '', useCallback(colorF => ({ type: 'ok', value: colorF }), []));
+
+    const [req, setReq] = useLoudRequestStatus();
+
     const canSubmit = req.type !== 'working'
         && name.type === 'ok'
-        && color.type === 'ok'; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
+        && color.type === 'ok';
 
     const doSave = () => {
         if (!canSubmit) return;

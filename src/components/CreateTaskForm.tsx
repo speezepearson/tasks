@@ -1,13 +1,20 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
-import { ReqStatus, Result, watchReqStatus } from "../common";
+import { ReqStatus, useParsed, watchReqStatus } from "../common";
 import { Button, Stack, TextField } from "@mui/material";
 
 export function CreateTaskForm({ project }: { project: Doc<'projects'>; }) {
     const createTask = useMutation(api.tasks.create);
-    const [textF, setTextF] = useState("");
+
+    const [text, textF, setTextF] = useParsed("" as string, useCallback(textF => {
+        const text = textF.trim();
+        return text === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF };
+    }, []));
+
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -19,12 +26,6 @@ export function CreateTaskForm({ project }: { project: Doc<'projects'>; }) {
         }
     }, [justCreated, inputRef]);
 
-    const text: Result<string> = useMemo(() => {
-        const text = textF.trim();
-        return text === ""
-            ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF };
-    }, [textF]);
     const canSubmit = req.type !== 'working'
         && text.type === 'ok';
 

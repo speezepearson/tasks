@@ -1,9 +1,9 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc } from "../../convex/_generated/dataModel";
-import { Result, parseISOMillis, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
+import { parseISOMillis, useLoudRequestStatus, useNow, useParsed, watchReqStatus } from "../common";
 import { Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { formatDate, startOfDay } from "date-fns";
 
@@ -31,19 +31,18 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     const allOptionTexts = useMemo(() => tasksByText.keySeq().concat(delegationsByText.keySeq()).sort().toArray(), [tasksByText, delegationsByText]);
 
     const [textF, setTextF] = useState("");
-    const [timeoutF, setTimeoutF] = useState(formatDate(today, 'yyyy-MM-dd'));
-
     const text = textF.trim();
 
-    const matchingTask = useMemo(() => tasksByText.get(text), [text, tasksByText]);
-    const matchingDelegation = useMemo(() => delegationsByText.get(text), [text, delegationsByText]);
-
-    const timeoutMillis: Result<number> = useMemo(() => {
+    const [timeoutMillis, timeoutF, setTimeoutF] = useParsed(formatDate(today, 'yyyy-MM-dd'), useCallback(timeoutF => {
         const n = parseISOMillis(timeoutF);
         if (n === undefined) return { type: 'err', message: "Invalid date" };
         if (n < today.getTime()) return { type: 'err', message: "Date is in the past" };
         return { type: 'ok', value: n };
-    }, [timeoutF, today]);
+    }, [today]));
+
+
+    const matchingTask = useMemo(() => tasksByText.get(text), [text, tasksByText]);
+    const matchingDelegation = useMemo(() => delegationsByText.get(text), [text, delegationsByText]);
 
     useEffect(() => {
         const day = parseISOMillis(text);

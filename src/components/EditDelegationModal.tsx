@@ -1,9 +1,9 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { Result, must, useLoudRequestStatus, watchReqStatus } from "../common";
+import { must, useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormHelperText, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
@@ -17,9 +17,27 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
 
     const projectsByName = useMemo(() => projectsById.mapEntries(([, project]) => [project.name, project]), [projectsById]);
 
-    const [textF, setTextF] = useState(delegation.text);
-    const [timeoutF, setTimeoutF] = useState(formatDate(delegation.timeoutMillis, 'yyyy-MM-dd'));
-    const [projectNameF, setProjectNameF] = useState<string | null>(delegation.project ? must(projectsById.get(delegation.project), "delegation's project does not actually exist").name : null);
+    const [newText, textF, setTextF] = useParsed(delegation.text, useCallback(textF => {
+        const text = textF.trim();
+        return text === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF };
+    }, []));
+
+    const [newTimeoutMillis, timeoutF, setTimeoutF] = useParsed(formatDate(delegation.timeoutMillis, 'yyyy-MM-dd'), useCallback(timeoutF => {
+        const millis = parseISOMillis(timeoutF);
+        // don't check whether it's in the future, because we're editing an existing delegation, which might have already timed out
+        return millis === undefined
+            ? { type: 'err', message: "Invalid date" }
+            : { type: 'ok', value: millis };
+    }, []));
+
+    const [newProjectId, projectNameF, setProjectNameF] = useParsed(delegation.project ? must(projectsById.get(delegation.project), "delegation's project does not actually exist").name : null, useCallback((projectNameF: string | null) => {
+        if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
+        const project = projectsByName.get(projectNameF);
+        if (project === undefined) return { type: 'err', message: "Project not found" };
+        return { type: 'ok', value: project._id };
+    }, [projectsByName]));
     // This field isn't "really" used -- it's whatever the user's typed in the autocomplete field.
     // If they have "unsaved" changes (i.e. they've typed since they selected), we disable submit:
     // it feels kinda janky to be able to submit when you've typed a garbage project name.
@@ -27,25 +45,6 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const newText: Result<string> = useMemo(() => {
-        const text = textF.trim();
-        return text === ""
-            ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF };
-    }, [textF]);
-    const newTimeoutMillis: Result<number> = useMemo(() => {
-        const millis = parseISOMillis(timeoutF);
-        return millis === undefined
-            ? { type: 'err', message: "Invalid date" }
-            : { type: 'ok', value: millis };
-    }, [timeoutF]);
-    const newProjectId: Result<Id<'projects'> | undefined> = useMemo(() => {
-        if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
-        const project = projectsByName.get(projectNameF);
-        if (project === undefined) return { type: 'err', message: "Project not found" };
-        return { type: 'ok', value: project._id };
-    }, [projectNameF, projectsByName]);
-    // don't check whether timeoutMillis is in the future, because we're editing an existing delegation, which might have already timed out
     const canSubmit = saveReq.type !== 'working'
         && newText.type === 'ok'
         && newTimeoutMillis.type === 'ok'

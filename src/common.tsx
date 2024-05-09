@@ -1,6 +1,6 @@
 /* eslint react-refresh/only-export-components: 0 */
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Map, List } from "immutable";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { parseISO } from "date-fns";
@@ -179,4 +179,17 @@ export const recommendedLightProjectColors = List.of(
 
 export function randomProjectColor(): string {
     return recommendedLightProjectColors.get(Math.floor(Math.random() * recommendedLightProjectColors.size))!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+}
+
+export function useParsed<Raw, Parsed>(
+    init: Raw,
+    validate: (raw: Raw) => Result<Parsed>,
+): [
+        Result<Parsed>,
+        Raw,
+        (raw: Raw) => void,
+    ] {
+    const [field, setField] = useState(init);
+    const validated = useMemo(() => validate(field), [field, validate]);
+    return [validated, field, setField];
 }

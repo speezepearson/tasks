@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useMemo, useState } from "react";
-import { Result, randomProjectColor, useLoudRequestStatus, watchReqStatus } from "../common";
+import { useCallback } from "react";
+import { randomProjectColor, useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
 import Button from "@mui/material/Button";
 import { Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Input, InputLabel, TextField } from "@mui/material";
 import { Doc } from "../../convex/_generated/dataModel";
@@ -10,21 +10,20 @@ import { List } from "immutable";
 export function CreateProjectModal({ onHide, existingProjects }: { onHide: () => void, existingProjects: List<Doc<'projects'>> }) {
     const create = useMutation(api.projects.create);
 
-    const [nameF, setNameF] = useState("");
-    const [colorF, setColorF] = useState(randomProjectColor());
-
-    const [req, setReq] = useLoudRequestStatus();
-
-    const name: Result<string> = useMemo(() => {
+    const [name, nameF, setNameF] = useParsed("" as string, useCallback(nameF => {
         const name = nameF.trim();
         if (name === "") return { type: 'err', message: "Name is required" };
         if (existingProjects.find(p => p.name === name)) return { type: 'err', message: "Project with this name already exists" };
         return { type: 'ok', value: name }
-    }, [nameF, existingProjects]);
-    const color: Result<string> = { type: 'ok', value: colorF };
+    }, [existingProjects]));
+
+    const [color, colorF, setColorF] = useParsed(randomProjectColor(), useCallback(colorF => ({ type: 'ok', value: colorF }), []));
+
+    const [req, setReq] = useLoudRequestStatus();
+
     const canSubmit = req.type !== 'working'
         && name.type === 'ok'
-        && color.type === 'ok'; // eslint-disable-line @typescript-eslint/no-unnecessary-condition
+        && color.type === 'ok';
 
     const doSave = () => {
         if (!canSubmit) return;

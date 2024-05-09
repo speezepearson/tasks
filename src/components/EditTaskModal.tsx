@@ -1,10 +1,10 @@
 import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormHelperText, TextField } from "@mui/material";
 import { useMutation } from "convex/react";
 import { Map } from "immutable";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { Result, must, useLoudRequestStatus, watchReqStatus } from "../common";
+import { must, useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
 
 export function EditTaskModal({ task, projectsById, onHide }: {
     task: Doc<'tasks'>;
@@ -15,8 +15,20 @@ export function EditTaskModal({ task, projectsById, onHide }: {
 
     const projectsByName = useMemo(() => projectsById.mapEntries(([, project]) => [project.name, project]), [projectsById]);
 
-    const [textF, setTextF] = useState(task.text);
-    const [projectNameF, setProjectNameF] = useState(task.project ? must(projectsById.get(task.project), "task's project does not actually exist").name : null);
+    const [text, textF, setTextF] = useParsed(task.text, useCallback(textF => {
+        const text = textF.trim();
+        return text === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: textF };
+    }, []));
+
+    const [projectId, projectNameF, setProjectNameF] = useParsed(task.project ? must(projectsById.get(task.project), "task's project does not actually exist").name : null, useCallback((projectNameF: string | null) => {
+        if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
+        const project = projectsByName.get(projectNameF);
+        if (project === undefined) return { type: 'err', message: "Project not found" };
+        return { type: 'ok', value: project._id };
+    }, [projectsByName]));
+
     // This field isn't "really" used -- it's whatever the user's typed in the autocomplete field.
     // If they have "unsaved" changes (i.e. they've typed since they selected), we disable submit:
     // it feels kinda janky to be able to submit when you've typed a garbage project name.
@@ -24,18 +36,6 @@ export function EditTaskModal({ task, projectsById, onHide }: {
 
     const [saveReq, setSaveReq] = useLoudRequestStatus();
 
-    const text: Result<string> = useMemo(() => {
-        const text = textF.trim();
-        return text === ""
-            ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF };
-    }, [textF]);
-    const projectId: Result<Id<'projects'> | undefined> = useMemo(() => {
-        if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
-        const project = projectsByName.get(projectNameF);
-        if (project === undefined) return { type: 'err', message: "Project not found" };
-        return { type: 'ok', value: project._id };
-    }, [projectNameF, projectsByName]);
     const canSubmit = saveReq.type !== 'working'
         && text.type === 'ok'
         && projectId.type === 'ok'

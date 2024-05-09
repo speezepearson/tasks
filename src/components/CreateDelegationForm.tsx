@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useMemo, useState } from "react";
-import { Result, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
+import { useCallback } from "react";
+import { useLoudRequestStatus, useNow, useParsed, watchReqStatus } from "../common";
 import { addDays, formatDate, startOfDay } from "date-fns";
 import { Button, Stack, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
@@ -9,23 +9,26 @@ import { Doc } from "../../convex/_generated/dataModel";
 
 export function CreateDelegationForm({ project }: { project: Doc<'projects'> }) {
     const createDelegation = useMutation(api.delegations.create);
-    const todayStr = formatDate(addDays(startOfDay(useNow()), 1), 'yyyy-MM-dd');
-    const [textF, setTextF] = useState("");
-    const [timeoutF, setTimeoutF] = useState(todayStr);
-    const [req, setReq] = useLoudRequestStatus();
+    const now = useNow();
 
-    const text: Result<string> = useMemo(() => {
+    const todayStr = formatDate(addDays(startOfDay(now), 1), 'yyyy-MM-dd');
+
+    const [text, textF, setTextF] = useParsed("" as string, useCallback(textF => {
         const text = textF.trim();
         return text === ""
             ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF };
-    }, [textF]);
-    const timeoutMillis: Result<number> = useMemo(() => {
-        const millis = parseISOMillis(timeoutF);
-        return millis === undefined
-            ? { type: 'err', message: "Invalid date" }
-            : { type: 'ok', value: millis };
-    }, [timeoutF]);
+            : { type: 'ok', value: text };
+    }, []));
+
+    const [timeoutMillis, timeoutF, setTimeoutF] = useParsed(todayStr, useCallback(timeoutF => {
+        const n = parseISOMillis(timeoutF);
+        if (n === undefined) return { type: 'err', message: "Invalid date" };
+        if (n < startOfDay(now).getTime()) return { type: 'err', message: "Date is in the past" };
+        return { type: 'ok', value: n };
+    }, [now]));
+
+    const [req, setReq] = useLoudRequestStatus();
+
     const canSubmit = req.type !== 'working'
         && text.type === 'ok'
         && timeoutMillis.type === 'ok';

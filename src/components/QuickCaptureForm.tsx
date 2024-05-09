@@ -2,11 +2,10 @@ import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List } from "immutable";
-import { Doc, Id } from "../../convex/_generated/dataModel";
-import { Result, parseISOMillis, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
+import { Doc } from "../../convex/_generated/dataModel";
+import { parseISOMillis, useLoudRequestStatus, useNow, useParsed, watchReqStatus } from "../common";
 import { Autocomplete, Box, Button, Stack, TextField, Typography, Alert } from "@mui/material";
 import { formatDate, startOfDay } from "date-fns";
-
 
 export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false }: {
     fixedProject?: Doc<'projects'>,
@@ -19,9 +18,25 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
     const createDelegation = useMutation(api.delegations.create);
     const today = startOfDay(useNow());
 
-    const [textF, setTextF] = useState("");
-    const [timeoutF, setTimeoutF] = useState(formatDate(today, 'yyyy-MM-dd'));
-    const [projectNameF, setProjectNameF] = useState<string | null>("Misc");
+    const [text, textF, setTextF] = useParsed("" as string, useCallback(textF => {
+        const text = textF.trim();
+        return text === ""
+            ? { type: 'err', message: "Text is required" }
+            : { type: 'ok', value: text };
+    }, []));
+
+    const [timeoutMillis, timeoutF, setTimeoutF] = useParsed(formatDate(today, 'yyyy-MM-dd'), useCallback(timeoutF => {
+        const n = parseISOMillis(timeoutF);
+        if (n === undefined) return { type: 'err', message: "Invalid date" };
+        if (n < today.getTime()) return { type: 'err', message: "Date is in the past" };
+        return { type: 'ok', value: n };
+    }, [today]));
+
+    const [projectId, projectNameF, setProjectNameF] = useParsed("Misc" as string | null, useCallback((projectNameF: string | null) => {
+        const project = fixedProject ?? allProjects.find(p => p.name === projectNameF);
+        if (project === undefined) return { type: 'err', message: "Project not found" };
+        return { type: 'ok', value: project._id };
+    }, [fixedProject, allProjects]));
     // This field isn't "really" used -- it's whatever the user's typed in the autocomplete field.
     // If they have "unsaved" changes (i.e. they've typed since they selected), we disable submit:
     // it feels kinda janky to be able to submit when you've typed a garbage project name.
@@ -34,24 +49,6 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
             .toArray(),
         [allProjects],
     );
-
-    const text: Result<string> = useMemo(() => {
-        const text = textF.trim();
-        return text === ""
-            ? { type: 'err', message: "Text is required" }
-            : { type: 'ok', value: textF };
-    }, [textF]);
-    const timeoutMillis: Result<number> = useMemo(() => {
-        const n = parseISOMillis(timeoutF);
-        if (n === undefined) return { type: 'err', message: "Invalid date" };
-        if (n < today.getTime()) return { type: 'err', message: "Date is in the past" };
-        return { type: 'ok', value: n };
-    }, [timeoutF, today]);
-    const projectId: Result<Id<'projects'>> = useMemo(() => {
-        const project = fixedProject ?? allProjects.find(p => p.name === projectNameF);
-        if (project === undefined) return { type: 'err', message: "Project not found" };
-        return { type: 'ok', value: project._id };
-    }, [fixedProject, projectNameF, allProjects]);
 
     useEffect(() => {
         const day = parseISOMillis(textF);
