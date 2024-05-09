@@ -1,6 +1,6 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { Result, parseISOMillis, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
@@ -85,11 +85,11 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
 
     const [alertMsg, setAlertMsg] = useState<string | null>(null);
     const omniboxRef = useRef<HTMLInputElement>(null);
-    const done = (msg: string) => {
+    const done = useCallback((msg: string) => {
         omniboxRef.current?.focus();
         setTextF("");
         setAlertMsg(msg);
-    }
+    }, [omniboxRef, setTextF, setAlertMsg]);
 
     // for some reason autofocus on the TextField doesn't work for project-specific
     const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -100,12 +100,31 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
         }
     }, [autofocus, omniboxRef, isFirstLoad])
 
-    return <Box component="form" onSubmit={(e) => {
-        e.preventDefault();
+    const doCapture = useCallback(() => {
         if (!canCreateCapture) return;
         watchReqStatus(setReq, createCapture({
             text: text.value,
         }).then(() => { done("Captured!") }));
+    }, [canCreateCapture, setReq, createCapture, text, done]);
+    const doCreateTask = useCallback(() => {
+        if (!canCreateTask) return;
+        watchReqStatus(setReq, createTask({
+            text: text.value,
+            project: projectId.value,
+        }).then(() => { done("Created task!") }));
+    }, [setReq, createTask, text, projectId, done, canCreateTask]);
+    const doCreateDelegation = useCallback(() => {
+        if (!canCreateDelegation) return;
+        watchReqStatus(setReq, createDelegation({
+            text: text.value,
+            project: projectId.value,
+            timeoutMillis: timeoutMillis.value,
+        }).then(() => { done("Delegated!") }));
+    }, [setReq, createDelegation, text, projectId, timeoutMillis, done, canCreateDelegation]);
+
+    return <Box component="form" onSubmit={(e) => {
+        e.preventDefault();
+        if (fixedProject) doCreateTask(); else doCapture();
     }}>
         <Stack direction="column">
             <TextField
@@ -126,26 +145,21 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
 
             <Stack direction="row" alignContent="center" sx={{ mt: 1 }}>
                 {!fixedProject && <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>}
-                <Button sx={{ width: '9em', }} variant="outlined" disabled={!canCreateTask} onClick={() => {
-                    if (!canCreateTask) return;
-                    watchReqStatus(setReq, createTask({
-                        text: text.value,
-                        project: projectId.value,
-                    }).then(() => { done("Created task!") }));
-                }}>Create task</Button>
+                <Button sx={{ width: '9em', }} disabled={!canCreateTask}
+                    variant={fixedProject ? "contained" : "outlined"}
+                    type={fixedProject ? "submit" : undefined}
+                    onClick={fixedProject ? undefined : doCreateTask}
+                >
+                    Create task
+                </Button>
                 {!fixedProject && projectAutocompleter}
             </Stack>
 
             <Stack direction="row" alignContent="center" sx={{ mt: 1 }}>
                 <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>
-                <Button sx={{ width: '9em', }} variant="outlined" disabled={!canCreateDelegation} onClick={() => {
-                    if (!canCreateDelegation) return;
-                    watchReqStatus(setReq, createDelegation({
-                        text: text.value,
-                        project: projectId.value,
-                        timeoutMillis: timeoutMillis.value,
-                    }).then(() => { done("Delegated!") }));
-                }}>Delegate</Button>
+                <Button sx={{ width: '9em', }} variant="outlined" disabled={!canCreateDelegation} onClick={doCreateDelegation}>
+                    Delegate
+                </Button>
                 {!fixedProject && projectAutocompleter}
                 <TextField
                     label="Timeout"
