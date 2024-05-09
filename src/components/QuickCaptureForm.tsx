@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { List } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { Result, parseISOMillis, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
-import { Autocomplete, Box, Button, Stack, TextField, Typography, Grid, Alert } from "@mui/material";
+import { Autocomplete, Box, Button, Stack, TextField, Typography, Alert } from "@mui/material";
 import { formatDate, startOfDay } from "date-fns";
 
 
@@ -74,8 +74,7 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
         && ((fixedProject !== undefined || projectNameScratchF === (projectNameF ?? '')));
 
     const projectAutocompleter = <Autocomplete
-        sx={{ mt: 1 }}
-        fullWidth
+        sx={{ mt: 1, width: '10em' }}
         options={projectAutocompleteOptions}
         renderInput={(params) => <TextField {...params} label="Project" error={projectId.type === 'err'} />}
         value={projectNameF}
@@ -119,53 +118,45 @@ export function QuickCaptureForm({ fixedProject, allProjects, autofocus = false 
                 value={textF}
                 onChange={(e) => { setTextF(e.target.value) }}
             />
-            <Grid container justifyContent="end" sx={{ mt: 1 }}>
-                {!fixedProject && <><Grid item xs={3}>
-                    <Button fullWidth variant="contained" type="submit" disabled={!canCreateCapture}>
-                        Capture
-                    </Button>
-                </Grid>
-                    <Grid item xs={1}>
-                        <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>
-                    </Grid>
-                </>}
-                <Grid item xs={3}>
-                    <Button fullWidth variant="outlined" disabled={!canCreateTask} onClick={() => {
-                        if (!canCreateTask) return;
-                        watchReqStatus(setReq, createTask({
-                            text: text.value,
-                            project: projectId.value,
-                        }).then(() => { done("Created task!") }));
-                    }}>Create task</Button>
-                    {!fixedProject && projectAutocompleter}
-                </Grid>
-                <Grid item xs={1}>
-                    <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>
-                </Grid>
-                <Grid item xs={3}>
-                    <Button fullWidth variant="outlined" disabled={!canCreateDelegation} onClick={() => {
-                        if (!canCreateDelegation) return;
-                        watchReqStatus(setReq, createDelegation({
-                            text: text.value,
-                            project: projectId.value,
-                            timeoutMillis: timeoutMillis.value,
-                        }).then(() => { done("Delegated!") }));
-                    }}>Delegate</Button>
-                    {!fixedProject && projectAutocompleter}
-                    <TextField
-                        label="Timeout"
-                        type="date"
-                        fullWidth
-                        error={timeoutMillis.type === 'err'}
-                        value={timeoutF}
-                        sx={{ mt: 1 }}
-                        onChange={(e) => { setTimeoutF(e.target.value) }}
-                    />
-                </Grid>
-                <Grid item xs={12}>
-                    {alertMsg && <Alert sx={{ mt: 1 }} severity="info">{alertMsg}</Alert>}
-                </Grid>
-            </Grid>
+
+            {!fixedProject && <Button variant="contained" type="submit" disabled={!canCreateCapture}>
+                Capture
+            </Button>
+            }
+
+            <Stack direction="row" alignContent="center" sx={{ mt: 1 }}>
+                {!fixedProject && <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>}
+                <Button sx={{ width: '9em', }} variant="outlined" disabled={!canCreateTask} onClick={() => {
+                    if (!canCreateTask) return;
+                    watchReqStatus(setReq, createTask({
+                        text: text.value,
+                        project: projectId.value,
+                    }).then(() => { done("Created task!") }));
+                }}>Create task</Button>
+                {!fixedProject && projectAutocompleter}
+            </Stack>
+
+            <Stack direction="row" alignContent="center" sx={{ mt: 1 }}>
+                <Typography sx={{ textAlign: 'center', mt: 0.5, minWidth: '2em' }}>or</Typography>
+                <Button sx={{ width: '9em', }} variant="outlined" disabled={!canCreateDelegation} onClick={() => {
+                    if (!canCreateDelegation) return;
+                    watchReqStatus(setReq, createDelegation({
+                        text: text.value,
+                        project: projectId.value,
+                        timeoutMillis: timeoutMillis.value,
+                    }).then(() => { done("Delegated!") }));
+                }}>Delegate</Button>
+                {!fixedProject && projectAutocompleter}
+                <TextField
+                    label="Timeout"
+                    type="date"
+                    error={timeoutMillis.type === 'err'}
+                    value={timeoutF}
+                    sx={{ mt: 1 }}
+                    onChange={(e) => { setTimeoutF(e.target.value) }}
+                />
+            </Stack>
+            {alertMsg && <Alert sx={{ mt: 1 }} severity="info">{alertMsg}</Alert>}
         </Stack>
     </Box>;
 }
