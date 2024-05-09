@@ -33,14 +33,11 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     const [textF, setTextF] = useState("");
     const [timeoutF, setTimeoutF] = useState(formatDate(today, 'yyyy-MM-dd'));
 
-    const intent: Result<{ type: 'raw', text: string } | { type: 'task', task: Doc<'tasks'> } | { type: 'delegation', delegation: Doc<'delegations'> }> = useMemo(() => {
-        if (textF.trim() === "") return { type: 'err', message: "Text is required" };
-        const task = tasksByText.get(textF);
-        if (task) return { type: 'ok', value: { type: 'task', task } };
-        const delegation = delegationsByText.get(textF);
-        if (delegation) return { type: 'ok', value: { type: 'delegation', delegation } };
-        return { type: 'ok', value: { type: 'raw', text: textF } };
-    }, [textF, tasksByText, delegationsByText]);
+    const text = textF.trim();
+
+    const matchingTask = useMemo(() => tasksByText.get(text), [text, tasksByText]);
+    const matchingDelegation = useMemo(() => delegationsByText.get(text), [text, delegationsByText]);
+
     const timeoutMillis: Result<number> = useMemo(() => {
         const n = parseISOMillis(timeoutF);
         if (n === undefined) return { type: 'err', message: "Invalid date" };
@@ -49,12 +46,12 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     }, [timeoutF, today]);
 
     useEffect(() => {
-        const day = parseISOMillis(textF);
+        const day = parseISOMillis(text);
         if (day) {
             setTimeoutF(formatDate(day, 'yyyy-MM-dd'));
             setTextF("");
         }
-    }, [setTimeoutF, setTextF, textF])
+    }, [setTimeoutF, setTextF, text])
 
     const [req, setReq] = useLoudRequestStatus();
 
@@ -69,73 +66,93 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
         }, 0);
     }, [inputRef]);
 
-    const taskButton = useMemo(() => {
-        if (intent.type === 'ok') {
-            const value = intent.value;
-            if (value.type === 'task') {
-                return <Button variant="outlined" disabled={req.type === 'working'} onClick={() => {
+    const { onSubmit, actionsSection } = (() => {
+        if (matchingTask !== undefined)
+            return {
+                onSubmit: () => {
                     watchReqStatus(setReq, linkBlocker({
                         id: task._id,
-                        blocker: { type: 'task', id: value.task._id },
-                    }).then(onHide));
-                }}>Link task</Button>
-            } else if (value.type === 'raw') {
-                return <Button variant="outlined" disabled={req.type === 'working'} onClick={() => {
-                    watchReqStatus(setReq, (async () => {
-                        const newTaskId = await createTask({
-                            text: value.text,
-                            project: task.project,
-                        });
-                        await linkBlocker({
-                            id: task._id,
-                            blocker: { type: 'task', id: newTaskId },
-                        });
-                        onHide();
-                    })());
-                }}>Create task</Button>
-            }
-        }
-        return <Button variant="outlined" disabled>Create task</Button>
-    }, [intent, req, linkBlocker, task, createTask, onHide, setReq]);
-
-    const delegationButton = useMemo(() => {
-        if (intent.type === 'ok') {
-            const value = intent.value;
-            if (value.type === 'delegation') {
-                return <Button variant="outlined" disabled={req.type === 'working'} onClick={() => {
+                        blocker: { type: 'task', id: matchingTask._id },
+                    }).then(onHide))
+                },
+                actionsSection: <Box><Button type="submit" variant="contained" disabled={req.type === 'working'}>Link task</Button></Box>,
+            };
+        if (matchingDelegation !== undefined)
+            return {
+                onSubmit: () => {
                     watchReqStatus(setReq, linkBlocker({
                         id: task._id,
-                        blocker: { type: 'delegation', id: value.delegation._id },
-                    }).then(onHide));
-                }}>Link delegation</Button>
-            } else if (value.type === 'raw' && timeoutMillis.type === 'ok') {
-                return <Button variant="outlined" disabled={req.type === 'working'} onClick={() => {
-                    watchReqStatus(setReq, (async () => {
-                        const newDelegationId = await createDelegation({
-                            text: value.text,
-                            project: task.project,
-                            timeoutMillis: timeoutMillis.value,
-                        });
-                        await linkBlocker({
-                            id: task._id,
-                            blocker: { type: 'delegation', id: newDelegationId },
-                        });
-                        onHide();
-                    })());
-                }}>Delegate</Button>
-            }
-        }
-        return <Button variant="outlined" disabled>Delegate</Button>
-    }, [intent, req, linkBlocker, task, createDelegation, timeoutMillis, onHide, setReq]);
+                        blocker: { type: 'delegation', id: matchingDelegation._id },
+                    }).then(onHide))
+                },
+                actionsSection: <Box><Button type="submit" variant="contained" disabled={req.type === 'working'}>Link delegation</Button></Box>,
+            };
 
-    return <Dialog open onClose={onHide} fullWidth>
+        const allDisabled = req.type === 'working' || text === "";
+        return {
+            onSubmit: () => {
+                watchReqStatus(setReq, (async () => {
+                    const newTaskId = await createTask({
+                        text,
+                        project: task.project,
+                    });
+                    await linkBlocker({
+                        id: task._id,
+                        blocker: { type: 'task', id: newTaskId },
+                    });
+                    onHide();
+                })())
+            },
+            actionsSection: <>
+                <Stack direction="row" alignItems="center">
+                    <Typography sx={{ mx: 1, visibility: 'hidden' }}>or</Typography>
+                    <Button variant="contained" type="submit" disabled={allDisabled}>Create task</Button>
+                </Stack>
+                <Stack direction={"row"} alignItems="center">
+                    <Typography sx={{ mx: 1 }}>or</Typography>
+                    <Button variant="outlined" disabled={allDisabled || timeoutMillis.type === 'err'} onClick={() => {
+                        watchReqStatus(setReq, (async () => {
+                            if (timeoutMillis.type === 'err') return;
+                            const newDelegationId = await createDelegation({
+                                text,
+                                project: task.project,
+                                timeoutMillis: timeoutMillis.value,
+                            });
+                            await linkBlocker({
+                                id: task._id,
+                                blocker: { type: 'delegation', id: newDelegationId },
+                            });
+                            onHide();
+                        })());
+                    }}>Create delegation</Button>
+                    <Typography sx={{ mx: 1 }}>due</Typography>
+                    <TextField
+                        label="Timeout"
+                        type="date"
+                        error={timeoutMillis.type === 'err'}
+                        value={timeoutF}
+                        disabled={allDisabled}
+                        sx={{ ml: 1 }}
+                        onChange={(e) => { setTimeoutF(e.target.value) }}
+                    />
+
+                </Stack>
+            </>,
+        };
+    })();
+
+    return <Dialog open onClose={onHide} fullWidth PaperProps={{
+        component: 'form',
+        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); onSubmit() },
+    }}>
         <DialogTitle>Add blocker to {'"'}{task.text}{'"'}</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ minHeight: '10em' }}>
             <Stack direction="column" spacing={2}>
                 <Autocomplete
                     freeSolo
                     fullWidth
                     ref={inputRef}
+                    PaperComponent={({ children, ...props }) => <Box {...props} sx={{ bgcolor: 'white', border: 1, opacity: 0.8, }}>{children}</Box>}
                     autoFocus
                     blurOnSelect={false}
                     options={allOptionTexts}
@@ -143,24 +160,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                     inputValue={textF}
                     onInputChange={(_, value) => { setTextF(value) }}
                 />
-                <Stack direction="row" alignItems="center">
-                    <Box sx={{ flexGrow: 1 }} />
-                    {taskButton}
-                </Stack>
-                <Stack direction="row" alignItems="center">
-                    <Box sx={{ flexGrow: 1 }} />
-                    <Typography sx={{ mx: 1 }}>or</Typography>
-                    {delegationButton}
-                    <Typography sx={{ mx: 1 }}>due</Typography>
-                    {<TextField
-                        label="Timeout"
-                        type="date"
-                        error={timeoutMillis.type === 'err'}
-                        value={timeoutF}
-                        sx={{ ml: 1, visibility: intent.type === 'ok' && intent.value.type === 'delegation' ? 'hidden' : 'visible' }}
-                        onChange={(e) => { setTimeoutF(e.target.value) }}
-                    />}
-                </Stack>
+                {actionsSection}
             </Stack>
         </DialogContent>
         <DialogActions>
