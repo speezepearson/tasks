@@ -19,12 +19,12 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
     const today = startOfDay(useNow());
 
     const tasksByText = useMemo(() => Map(allTasks
-        .filter(t => t._id !== task._id && (t.project === task.project))
+        .filter(t => t._id !== task._id && (t.project === task.project) && t.completedAtMillis === undefined)
         .map(t => [t.text, t]),
     ), [allTasks, task]);
 
     const delegationsByText = useMemo(() => Map(allDelegations
-        .filter(d => (d.project === task.project))
+        .filter(d => (d.project === task.project) && d.completedAtMillis === undefined)
         .map(d => [d.text, d]),
     ), [allDelegations, task]);
 
