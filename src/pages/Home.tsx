@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
-import { must, textMatches, useNow } from "../common";
+import { listcmp, must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { CreateProjectModal } from "../components/CreateProjectModal";
@@ -138,6 +138,7 @@ export function Page() {
                     ? <Box>Loading...</Box>
                     : projectBlocks
                         .entrySeq()
+                        .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
                             const projectTasks = block.actionable.tasks.filter(t => textMatches(t.text, nextActionFilterF));
                             const projectDelegations = block.actionable.delegations.filter(d => textMatches(d.text, nextActionFilterF));
@@ -168,6 +169,7 @@ export function Page() {
                     ? <Box>Loading...</Box>
                     : projectBlocks
                         .entrySeq()
+                        .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
                             const projectTasks = block.blocked.tasks;
                             const projectDelegations = block.blocked.delegations;
@@ -203,6 +205,7 @@ export function Page() {
                     ? <Box>Loading...</Box>
                     : projectBlocks
                         .entrySeq()
+                        .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
                             const projectTasks = block.historic.tasks;
                             const projectDelegations = block.historic.delegations;
