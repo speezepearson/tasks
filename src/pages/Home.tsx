@@ -89,6 +89,7 @@ export function Page() {
                     setShowQuickCapture(true);
                     break;
                 case 'f':
+                    if (e.ctrlKey || e.metaKey) break;
                     e.preventDefault();
                     nextActionFilterFieldRef.current?.focus();
                     break;
