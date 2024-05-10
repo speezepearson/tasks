@@ -4,13 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
 import { must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { CreateProjectModal } from "../components/CreateProjectModal";
 import { getOutstandingBlockers } from "../common";
 import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { QuickCaptureForm } from "../components/QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Doc } from "../../convex/_generated/dataModel";
 
 type ProjectBlocks = { // eslint-disable-line @typescript-eslint/consistent-type-definitions
@@ -116,9 +117,11 @@ export function Page() {
         </Dialog>}
         {captures && captures.size > 0 && <Inbox captures={captures} />}
 
-        <Box sx={{ mt: 4 }}>
-            <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" textAlign="center">Next Actions</Typography>
+        <Accordion defaultExpanded sx={{ mt: 4 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h4">Next Actions</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
                 <TextField
                     inputRef={nextActionFilterFieldRef}
                     label="filter"
@@ -127,8 +130,6 @@ export function Page() {
                     onKeyDown={(e) => { if (e.key === 'Escape') { console.log(nextActionFilterFieldRef.current); nextActionFilterFieldRef.current?.blur(); } }}
                     sx={{ maxWidth: '10em' }}
                 />
-            </Box>
-            <Box>
                 {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
@@ -151,69 +152,73 @@ export function Page() {
                                 delegationsById={delegationsById}
                             />
                         })}
-            </Box>
-        </Box>
+            </AccordionDetails>
+        </Accordion>
 
-        <Box sx={{ mt: 4 }}>
-            <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" textAlign="center">Blocked</Typography>
-            </Box>
-            {(projectBlocks === undefined
-                || projectsById === undefined
-                || tasksById === undefined
-                || delegationsById === undefined
-            )
-                ? <Box>Loading...</Box>
-                : projectBlocks
-                    .entrySeq()
-                    .map(([project, block]) => {
-                        const projectTasks = block.blocked.tasks;
-                        const projectDelegations = block.blocked.delegations;
-                        if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
-                        return <ProjectCard
-                            key={project._id}
-                            project={project}
-                            projectTasks={projectTasks}
-                            projectDelegations={projectDelegations}
-                            projectsById={projectsById}
-                            tasksById={tasksById}
-                            delegationsById={delegationsById}
-                        />
-                    })}
-        </Box>
+        <Accordion sx={{ mt: 4 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h4">Blocked</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+                {(projectBlocks === undefined
+                    || projectsById === undefined
+                    || tasksById === undefined
+                    || delegationsById === undefined
+                )
+                    ? <Box>Loading...</Box>
+                    : projectBlocks
+                        .entrySeq()
+                        .map(([project, block]) => {
+                            const projectTasks = block.blocked.tasks;
+                            const projectDelegations = block.blocked.delegations;
+                            if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                            return <ProjectCard
+                                key={project._id}
+                                project={project}
+                                projectTasks={projectTasks}
+                                projectDelegations={projectDelegations}
+                                projectsById={projectsById}
+                                tasksById={tasksById}
+                                delegationsById={delegationsById}
+                            />
+                        })}
+            </AccordionDetails>
+        </Accordion>
 
-        <Box sx={{ mt: 4 }}>
-            <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" textAlign="center">Archives</Typography>
+        <Accordion sx={{ mt: 4 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h4">Archives</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
                 {showCreateProjectModal && <CreateProjectModal
                     onHide={() => { setShowCreateProjectModal(false) }}
                     existingProjects={projects ?? List()}
                 />}
                 <Button variant="contained" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
-            </Box>
-            {(projectBlocks === undefined
-                || projectsById === undefined
-                || tasksById === undefined
-                || delegationsById === undefined
-            )
-                ? <Box>Loading...</Box>
-                : projectBlocks
-                    .entrySeq()
-                    .map(([project, block]) => {
-                        const projectTasks = block.historic.tasks;
-                        const projectDelegations = block.historic.delegations;
-                        if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
-                        return <ProjectCard
-                            key={project._id}
-                            project={project}
-                            projectTasks={projectTasks}
-                            projectDelegations={projectDelegations}
-                            projectsById={projectsById}
-                            tasksById={tasksById}
-                            delegationsById={delegationsById}
-                        />
-                    })}
-        </Box>
+                {(projectBlocks === undefined
+                    || projectsById === undefined
+                    || tasksById === undefined
+                    || delegationsById === undefined
+                )
+                    ? <Box>Loading...</Box>
+                    : projectBlocks
+                        .entrySeq()
+                        .map(([project, block]) => {
+                            const projectTasks = block.historic.tasks;
+                            const projectDelegations = block.historic.delegations;
+                            if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                            return <ProjectCard
+                                key={project._id}
+                                project={project}
+                                projectTasks={projectTasks}
+                                projectDelegations={projectDelegations}
+                                projectsById={projectsById}
+                                tasksById={tasksById}
+                                delegationsById={delegationsById}
+                            />
+                        })}
+            </AccordionDetails>
+        </Accordion>
     </Stack>
 }
 
