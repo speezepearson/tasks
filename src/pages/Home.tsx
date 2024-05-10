@@ -9,10 +9,20 @@ import { CreateProjectModal } from "../components/CreateProjectModal";
 import { getOutstandingBlockers } from "../common";
 import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
-import { listcmp } from "../common";
 import { QuickCaptureForm } from "../components/QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
-// import { CreateDelegationForm } from "../components/CreateDelegationForm";
+import { Doc } from "../../convex/_generated/dataModel";
+
+type ProjectBlocks = { // eslint-disable-line @typescript-eslint/consistent-type-definitions
+    actionable: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
+    blocked: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
+    historic: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
+}
+const initialProjectBlock = (): ProjectBlocks => ({
+    actionable: { tasks: List(), delegations: List() },
+    blocked: { tasks: List(), delegations: List() },
+    historic: { tasks: List(), delegations: List() },
+});
 
 export function Page() {
     const projects = mapundef(useQuery(api.projects.list), List);
@@ -20,21 +30,6 @@ export function Page() {
     const blockers = mapundef(useQuery(api.delegations.list), List);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
-    const tasksGroupedByProject = useMemo(() => {
-        if (projectsById === undefined || tasks === undefined) return undefined;
-        let res = tasks.groupBy(t => must(projectsById.get(t.project), "task references nonexistent project"));
-        projectsById.forEach((project) => {
-            if (!res.has(project)) res = res.set(project, List());
-        });
-        return res.entrySeq()
-            .filter(([p]) => p.archivedAtMillis === undefined)
-            .sortBy(([p, pt]) => [
-                p.name.toLowerCase() === 'misc', // towards the end if p is 'misc'
-                pt.isEmpty(), // towards the end if there are no tasks
-                pt.filter(t => t.completedAtMillis === undefined).size > 0, // towards the end if there are no incomplete tasks
-                -p._creationTime // towards the end if p is older
-            ], listcmp);
-    }, [tasks, projectsById]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
     const delegationsById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
@@ -46,6 +41,38 @@ export function Page() {
                 .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, delegationsById, now })])
         );
     }, [tasks, tasksById, delegationsById, now]);
+
+    const projectBlocks: undefined | Map<Doc<'projects'>, ProjectBlocks> = useMemo(() => {
+        if (projects === undefined || outstandingBlockers === undefined || tasks === undefined || delegationsById === undefined || blockers === undefined || projectsById === undefined) return undefined;
+
+        const taskBins: Map<Doc<'tasks'>, keyof ProjectBlocks> = Map(tasks.map(t => {
+            if (t.completedAtMillis !== undefined
+                || must(projectsById.get(t.project), "task references nonexistent project").archivedAtMillis !== undefined)
+                return [t, 'historic'];
+            if (!outstandingBlockers.get(t._id, List()).isEmpty())
+                return [t, 'blocked'];
+            return [t, 'actionable'];
+        }));
+
+        const delegationBins: Map<Doc<'delegations'>, keyof ProjectBlocks> = Map(blockers.map(d => {
+            if (d.completedAtMillis !== undefined
+                || must(projectsById.get(d.project), "delegation references nonexistent project").archivedAtMillis !== undefined)
+                return [d, 'historic'];
+            if (d.timeoutMillis < now.getTime())
+                return [d, 'actionable'];
+            return [d, 'blocked'];
+        }))
+
+        let res: Map<Doc<'projects'>, ProjectBlocks> = Map();
+        taskBins.forEach((bin, t) => res = res.update(
+            must(projectsById.get(t.project), "task references nonexistent project"),
+            initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], tasks: pb[bin].tasks.push(t) } })));
+        delegationBins.forEach((bin, d) => res = res.update(
+            must(projectsById.get(d.project), "delegation references nonexistent project"),
+            initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], delegations: pb[bin].delegations.push(d) } })));
+        console.log({ projectBlocks: res.toJS() })
+        return res;
+    }, [tasks, blockers, now, delegationsById, outstandingBlockers, projects, projectsById]);
 
     const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
     const [nextActionFilterF, setNextActionFilterF] = useState("");
@@ -101,27 +128,23 @@ export function Page() {
                 />
             </Box>
             <Box>
-                {(tasksGroupedByProject === undefined
-                    || outstandingBlockers === undefined
+                {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
                     || delegationsById === undefined
-                    || blockers === undefined
                 )
                     ? <Box>Loading...</Box>
-                    : tasksGroupedByProject
-                        .map(([p, projectTasks]) => {
-                            projectTasks = projectTasks.filter((task) =>
-                                task.completedAtMillis === undefined &&
-                                outstandingBlockers.get(task._id, List()).isEmpty() &&
-                                textMatches(task.text, nextActionFilterF)
-                            );
-                            if (projectTasks.isEmpty()) return null;
+                    : projectBlocks
+                        .entrySeq()
+                        .map(([project, block]) => {
+                            const projectTasks = block.actionable.tasks.filter(t => textMatches(t.text, nextActionFilterF));
+                            const projectDelegations = block.actionable.delegations.filter(d => textMatches(d.text, nextActionFilterF));
+                            if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
                             return <ProjectCard
-                                key={p._id}
-                                project={p}
+                                key={project._id}
+                                project={project}
                                 projectTasks={projectTasks}
-                                projectDelegations={blockers.filter(d => d.project === p._id && d.completedAtMillis === undefined && d.timeoutMillis < now.getTime())}
+                                projectDelegations={projectDelegations}
                                 projectsById={projectsById}
                                 tasksById={tasksById}
                                 delegationsById={delegationsById}
@@ -132,33 +155,63 @@ export function Page() {
 
         <Box sx={{ mt: 4 }}>
             <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" textAlign="center">Projects</Typography>
+                <Typography variant="h4" textAlign="center">Blocked</Typography>
+            </Box>
+            {(projectBlocks === undefined
+                || projectsById === undefined
+                || tasksById === undefined
+                || delegationsById === undefined
+            )
+                ? <Box>Loading...</Box>
+                : projectBlocks
+                    .entrySeq()
+                    .map(([project, block]) => {
+                        const projectTasks = block.blocked.tasks;
+                        const projectDelegations = block.blocked.delegations;
+                        if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                        return <ProjectCard
+                            key={project._id}
+                            project={project}
+                            projectTasks={projectTasks}
+                            projectDelegations={projectDelegations}
+                            projectsById={projectsById}
+                            tasksById={tasksById}
+                            delegationsById={delegationsById}
+                        />
+                    })}
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
+            <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" textAlign="center">Archives</Typography>
                 {showCreateProjectModal && <CreateProjectModal
                     onHide={() => { setShowCreateProjectModal(false) }}
                     existingProjects={projects ?? List()}
                 />}
                 <Button variant="contained" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
             </Box>
-            {(tasksGroupedByProject === undefined
-                || outstandingBlockers === undefined
+            {(projectBlocks === undefined
                 || projectsById === undefined
                 || tasksById === undefined
                 || delegationsById === undefined
-                || blockers === undefined
             )
                 ? <Box>Loading...</Box>
-                : tasksGroupedByProject
-                    .map(([project, projectTasks]) => (
-                        <ProjectCard
+                : projectBlocks
+                    .entrySeq()
+                    .map(([project, block]) => {
+                        const projectTasks = block.historic.tasks;
+                        const projectDelegations = block.historic.delegations;
+                        if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                        return <ProjectCard
                             key={project._id}
                             project={project}
                             projectTasks={projectTasks}
-                            projectDelegations={blockers.filter(d => d.project === project._id)}
+                            projectDelegations={projectDelegations}
                             projectsById={projectsById}
                             tasksById={tasksById}
                             delegationsById={delegationsById}
                         />
-                    ))}
+                    })}
         </Box>
     </Stack>
 }
