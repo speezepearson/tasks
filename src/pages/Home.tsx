@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map } from "immutable";
-import { listcmp, must, textMatches, useNow } from "../common";
+import { must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { CreateProjectModal } from "../components/CreateProjectModal";
