@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { ReqStatus, must, useParsed, watchReqStatus } from "../common";
-import { Autocomplete, Box, Button, Stack, TextField } from "@mui/material";
+import { Autocomplete, Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
 import { Map } from "immutable";
 
 export function TaskForm({ init, initProject, projectsById, onSubmit }: {
@@ -51,28 +51,29 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
         && projectId.type === 'ok'
         && projectNameScratchF === (projectNameF ?? '');
 
-    const doSave = useCallback(() => {
-        if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: text.value, project: projectId.value }));
-    }, [canSubmit, text, projectId, setReq, onSubmit]);
-
     return <form onSubmit={(e) => {
         e.preventDefault();
-        doSave();
+        if (!canSubmit) return;
+        watchReqStatus(setReq, onSubmit({ text: text.value, project: projectId.value }).then(() => {
+            if (!init) {
+                setTextF("");
+            }
+        }));
     }}>
-        <Stack direction="column">
-            <TextField
-                label="New text"
-                autoFocus
-                // no error={!!textErr} because the necessity is obvious
-                sx={{ mt: 1 }}
-                disabled={req.type === 'working'}
-                value={textF}
-                onChange={(e) => { setTextF(e.target.value); }}
-            />
+        <Stack direction="column" spacing={2} sx={{ pt: 2 }}>
+            <FormControl>
+                <TextField
+                    label="Text"
+                    autoFocus
+                    // no error={!!textErr} because the necessity is obvious
+                    disabled={req.type === 'working'}
+                    value={textF}
+                    onChange={(e) => { setTextF(e.target.value); }}
+                />
+                <FormHelperText>You can use markdown here.</FormHelperText>
+            </FormControl>
 
             <Autocomplete
-                sx={{ mt: 4 }}
                 options={projectAutocompleteOptions}
                 renderInput={(params) => <TextField {...params} label="Project" error={projectId.type === 'err'} />}
                 value={projectNameF}

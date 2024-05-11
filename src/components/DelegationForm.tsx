@@ -3,7 +3,7 @@ import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, useParsed, watchReqStatus } from "../common";
 import { addDays, formatDate } from "date-fns";
-import { Autocomplete, Button, FormHelperText, Stack, TextField } from "@mui/material";
+import { Autocomplete, Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
 
 export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
@@ -56,39 +56,31 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
         && newProjectId.type === 'ok'
         && projectNameScratchF === (projectNameF ?? '');
 
-    const doSave = useCallback(() => {
-        if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value! }));
-    }, [canSubmit, newText, newTimeoutMillis, newProjectId, setReq, onSubmit]);
-
     return <form onSubmit={(e) => {
         e.preventDefault();
-        doSave();
+        if (!canSubmit) return;
+        watchReqStatus(setReq, onSubmit({ text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value! }).then(() => {
+            if (!init) {
+                setTextF("");
+            }
+        }));
     }}>
-        <Stack direction="column">
-            <TextField
-                label="Text"
-                error={newText.type === 'err'}
-                sx={{ mt: 1 }}
-                fullWidth
-                autoFocus
-                type="text"
-                value={textF}
-                onChange={(e) => { setTextF(e.target.value); }}
-            />
-            <FormHelperText>You can use markdown here.</FormHelperText>
-
-            <TextField
-                label="Timeout"
-                error={newTimeoutMillis.type === 'err'}
-                sx={{ mt: 4 }}
-                fullWidth
-                type="date"
-                value={timeoutF}
-                onChange={(e) => { setTimeoutF(e.target.value) }} />
+        <Stack direction="column" spacing={2} sx={{ pt: 2 }}>
+            <FormControl>
+                <TextField
+                    label="Text"
+                    // no error={!!textErr} because the necessity is obvious
+                    sx={{ mt: 1 }}
+                    fullWidth
+                    autoFocus
+                    type="text"
+                    value={textF}
+                    onChange={(e) => { setTextF(e.target.value); }}
+                />
+                <FormHelperText>You can use markdown here.</FormHelperText>
+            </FormControl>
 
             <Autocomplete
-                sx={{ mt: 4 }}
                 options={projectsByName.entrySeq()
                     .sortBy(([name]) => name)
                     .map((([name]) => name))
@@ -101,9 +93,17 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
                 onInputChange={(_, name) => { setProjectNameScratchF(name) }}
             />
 
-            <Button variant="contained" type="submit" disabled={!canSubmit}>
+            <TextField
+                label="Timeout"
+                error={newTimeoutMillis.type === 'err'}
+                fullWidth
+                type="date"
+                value={timeoutF}
+                onChange={(e) => { setTimeoutF(e.target.value) }} />
+
+            <Box sx={{ ml: 'auto' }}><Button variant="contained" type="submit" disabled={!canSubmit} sx={{ py: 1 }}>
                 {req.type === 'working' ? 'Saving...' : 'Save'}
-            </Button>
+            </Button></Box>
         </Stack>
-    </form>;
+    </form >;
 }

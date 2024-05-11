@@ -25,14 +25,10 @@ export function ProjectForm({ init, forbidNames, onArchive, onSubmit }: {
         && name.type === 'ok'
         && color.type === 'ok';
 
-    const doSave = () => {
-        if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ name: name.value, color: color.value }));
-    };
-
     return <form onSubmit={(e) => {
         e.preventDefault();
-        doSave();
+        if (!canSubmit) return;
+        watchReqStatus(setReq, onSubmit({ name: name.value, color: color.value }));
     }}>
         <Stack direction="column">
             <TextField
