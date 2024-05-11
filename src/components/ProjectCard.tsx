@@ -7,9 +7,11 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { Task } from "./Task";
 import { EditProjectModal } from "./EditProjectModal";
 import { listcmp } from "../common";
-import { QuickCaptureForm } from "./QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
 import { Delegation } from "./Delegation";
+import { TaskForm } from "./TaskForm";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export function ProjectCard({
     project, projectTasks, projectDelegations, projectsById, tasksById, delegationsById,
@@ -21,12 +23,13 @@ export function ProjectCard({
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
 }) {
+    const createTask = useMutation(api.tasks.create);
 
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const [editing, setEditing] = useState(false);
     const allProjectsList = useMemo(() => List(projectsById.values()), [projectsById]);
 
-    const [showQuickCapture, setShowQuickCapture] = useState(false);
+    const [showAddTaskModal, setShowAddTaskModal] = useState(false);
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
@@ -35,13 +38,25 @@ export function ProjectCard({
             project={project}
             existingProjects={allProjectsList}
             onHide={() => { setEditing(false); }} />}
-        {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }}>
-            <DialogTitle>Quick Capture</DialogTitle>
+        {showAddTaskModal && <Dialog open fullWidth
+            disableRestoreFocus // HACK: required for autofocus: https://github.com/mui/material-ui/issues/33004
+            onClose={() => { setShowAddTaskModal(false) }}
+        >
+            <DialogTitle>Create Task</DialogTitle>
             <DialogContent>
-                <QuickCaptureForm fixedProject={project} allProjects={allProjectsList} autofocus />
+                <TaskForm
+                    init={undefined}
+                    initProject={project}
+                    projectsById={projectsById}
+                    onSubmit={async ({ text, project }) => {
+                        console.log('creating task', text, project);
+                        await createTask({ text, project });
+                        setShowAddTaskModal(false);
+                    }}
+                />
             </DialogContent>
             <DialogActions>
-                <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
+                <Button variant="outlined" color="secondary" onClick={() => { setShowAddTaskModal(false) }}>Close</Button>
             </DialogActions>
         </Dialog>}
         <Card sx={{ backgroundColor: project.color ?? 'none', p: 1 }}>
@@ -50,7 +65,7 @@ export function ProjectCard({
                     {project.name}
                 </Typography>
                 <Box sx={{ flexGrow: 1 }} />
-                <Button onClick={() => { setShowQuickCapture(true); }}>
+                <Button onClick={() => { setShowAddTaskModal(true); }}>
                     <AddIcon />
                 </Button>
                 <Button onClick={() => { setEditing(true); }}>

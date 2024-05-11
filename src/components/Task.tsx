@@ -6,10 +6,10 @@ import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "./SingleLineMarkdown";
-import { Box, Button, Checkbox, Stack, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import { AddBlockerModal } from "./AddBlockerModal";
 import { getOutstandingBlockers } from "../common";
-import { EditTaskModal } from "./EditTaskModal";
+import { TaskForm } from "./TaskForm";
 
 export function Task({ task, projectsById, tasksById, delegationsById }: {
     task: Doc<'tasks'>;
@@ -17,6 +17,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
 }) {
+    const updateTask = useMutation(api.tasks.update);
     const unlinkBlocker = useMutation(api.tasks.unlinkBlocker);
     const setCompleted = useMutation(api.tasks.setCompleted);
     const setDelegationCompleted = useMutation(api.delegations.setCompleted);
@@ -30,10 +31,25 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
     const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
     const blocked = outstandingBlockers.size > 0;
     return <Box>
-        {editing && <EditTaskModal
-            task={task}
-            projectsById={projectsById}
-            onHide={() => { setEditing(false); }} />}
+        {editing && <Dialog open onClose={() => { setEditing(false) }} fullWidth>
+            <DialogTitle>Edit task</DialogTitle>
+            <DialogContent>
+                <TaskForm
+                    init={task}
+                    onSubmit={async ({ text, project }) => {
+                        await updateTask({ id: task._id, text, project });
+                        setEditing(false);
+                    }}
+                    projectsById={projectsById}
+                />
+            </DialogContent>
+
+            <DialogActions>
+                <Button variant="outlined" onClick={() => { setEditing(false) }}>
+                    Close
+                </Button>
+            </DialogActions>
+        </Dialog>}
         <Stack direction="row" alignItems="center">
             <Checkbox
                 checked={task.completedAtMillis !== undefined}

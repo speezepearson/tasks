@@ -71,7 +71,6 @@ export function Page() {
         delegationBins.forEach((bin, d) => res = res.update(
             must(projectsById.get(d.project), "delegation references nonexistent project"),
             initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], delegations: pb[bin].delegations.push(d) } })));
-        console.log({ projectBlocks: res.toJS() })
         return res;
     }, [tasks, blockers, now, delegationsById, outstandingBlockers, projects, projectsById]);
 
@@ -127,7 +126,7 @@ export function Page() {
                     label="filter"
                     value={nextActionFilterF}
                     onChange={(e) => { setNextActionFilterF(e.target.value) }}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { console.log(nextActionFilterFieldRef.current); nextActionFilterFieldRef.current?.blur(); } }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { nextActionFilterFieldRef.current?.blur(); } }}
                     sx={{ maxWidth: '10em' }}
                 />
                 {(projectBlocks === undefined
