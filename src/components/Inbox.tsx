@@ -8,11 +8,28 @@ import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { Doc } from "../../convex/_generated/dataModel";
 import { List } from "immutable";
 
-export function Inbox({ captures }: { captures: List<Doc<'captures'>> }) {
+function Capture({ capture }: { capture: Doc<'captures'> }) {
     const archive = useMutation(api.captures.archive);
 
-    const [, setReq] = useLoudRequestStatus();
+    const [req, setReq] = useLoudRequestStatus();
 
+    return <Stack direction="row" sx={{ ":hover": { outline: '1px solid gray' } }}>
+        <Typography noWrap>
+            <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
+        </Typography>
+        <Button
+            variant="outlined"
+            sx={{ ml: "auto" }}
+            onClick={() => { watchReqStatus(setReq, archive({ id: capture._id })) }}
+            disabled={req.type === 'working'}
+        >
+            Archive
+        </Button>
+    </Stack>
+
+}
+
+export function Inbox({ captures }: { captures: List<Doc<'captures'>> }) {
     return <Card>
         <CardContent>
             <Typography variant="h4" textAlign="center">
@@ -20,18 +37,7 @@ export function Inbox({ captures }: { captures: List<Doc<'captures'>> }) {
             </Typography>
 
             <Stack direction="column" sx={{ mt: 1 }}>
-                {captures.map((capture) => <Stack key={capture._id} direction="row" sx={{ ":hover": { outline: '1px solid gray' } }}>
-                    <Typography noWrap>
-                        <SingleLineMarkdown>{capture.text}</SingleLineMarkdown>
-                    </Typography>
-                    <Button
-                        variant="outlined"
-                        sx={{ ml: "auto" }}
-                        onClick={() => { watchReqStatus(setReq, archive({ id: capture._id })) }}
-                    >
-                        Archive
-                    </Button>
-                </Stack>)}
+                {captures.map((capture) => <Capture key={capture._id} capture={capture} />)}
             </Stack>
         </CardContent>
     </Card>

@@ -6,8 +6,8 @@ import { Doc, Id } from "../convex/_generated/dataModel";
 import { parseISO } from "date-fns";
 
 export type Result<T> =
-    | { type: 'ok', value: T }
-    | { type: 'err', message: string };
+    | { type: 'ok', readonly value: T }
+    | { type: 'err', readonly message: string };
 
 export type ReqStatus =
     | { type: 'working' }

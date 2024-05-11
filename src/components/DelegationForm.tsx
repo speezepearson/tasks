@@ -54,12 +54,13 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
         && newText.type === 'ok'
         && newTimeoutMillis.type === 'ok'
         && newProjectId.type === 'ok'
+        && newProjectId.value !== undefined
         && projectNameScratchF === (projectNameF ?? '');
 
     return <form onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value! }).then(() => {
+        watchReqStatus(setReq, onSubmit({ text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value }).then(() => {
             if (!init) {
                 setTextF("");
             }

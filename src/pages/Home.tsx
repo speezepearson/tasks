@@ -25,10 +25,16 @@ const initialProjectBlock = (): ProjectBlocks => ({
     historic: { tasks: List(), delegations: List() },
 });
 
+
 export function Page() {
-    const projects = mapundef(useQuery(api.projects.list), List);
-    const tasks = mapundef(useQuery(api.tasks.list), List);
-    const blockers = mapundef(useQuery(api.delegations.list), List);
+    const rawProjects = useQuery(api.projects.list);
+    const projects = useMemo(() => rawProjects && List(rawProjects), [rawProjects]);
+
+    const rawTasks = useQuery(api.tasks.list);
+    const tasks = useMemo(() => rawTasks && List(rawTasks), [rawTasks]);
+
+    const rawBlockers = useQuery(api.delegations.list);
+    const blockers = useMemo(() => rawBlockers && List(rawBlockers), [rawBlockers]);
 
     const createProject = useMutation(api.projects.create);
 
@@ -107,10 +113,10 @@ export function Page() {
         <Button variant="contained" sx={{ mx: 'auto', width: '10em' }} onClick={() => { setShowQuickCapture(true) }}>
             <AddIcon />
         </Button>
-        {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }}>
+        {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }} PaperProps={{ sx: { position: 'absolute', top: 0 } }}>
             <DialogTitle>Quick Capture</DialogTitle>
             <DialogContent>
-                <QuickCaptureForm allProjects={projects ?? List()} autofocus />
+                <QuickCaptureForm projectsById={projectsById ?? Map()} />
             </DialogContent>
             <DialogActions>
                 <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
