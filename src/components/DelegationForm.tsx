@@ -1,30 +1,35 @@
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { useCallback, useMemo, useState } from "react";
 import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { must, useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
-import { formatDate } from "date-fns";
-import { Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormHelperText, TextField } from "@mui/material";
+import { must, useLoudRequestStatus, useNow, useParsed, watchReqStatus } from "../common";
+import { addDays, formatDate } from "date-fns";
+import { Autocomplete, Button, FormHelperText, Stack, TextField } from "@mui/material";
 import { parseISOMillis } from "../common";
 
-export function EditDelegationModal({ delegation, projectsById, onHide }: {
-    delegation: Doc<'delegations'>;
+export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
+    init?: Doc<'delegations'>;
+    initProject?: Doc<'projects'>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
-    onHide: () => unknown;
+    onSubmit: (args: Pick<Doc<'delegations'>, 'text' | 'timeoutMillis' | 'project'>) => Promise<unknown>;
 }) {
-    const update = useMutation(api.delegations.update);
+    initProject = useMemo(() =>
+        initProject ?? (init?.project
+            ? must(projectsById.get(init.project), "delegation's project does not actually exist")
+            : must(projectsById.valueSeq().find(p => p.name === 'Misc'), 'must have a misc project')),
+        [init, initProject, projectsById])
+
+    const now = useNow();
 
     const projectsByName = useMemo(() => projectsById.mapEntries(([, project]) => [project.name, project]), [projectsById]);
 
-    const [newText, textF, setTextF] = useParsed(delegation.text, useCallback(textF => {
+    const [newText, textF, setTextF] = useParsed(init?.text ?? '', useCallback(textF => {
         const text = textF.trim();
         return text === ""
             ? { type: 'err', message: "Text is required" }
             : { type: 'ok', value: textF };
     }, []));
 
-    const [newTimeoutMillis, timeoutF, setTimeoutF] = useParsed(formatDate(delegation.timeoutMillis, 'yyyy-MM-dd'), useCallback(timeoutF => {
+    const [newTimeoutMillis, timeoutF, setTimeoutF] = useParsed(formatDate(init?.timeoutMillis ?? addDays(now, 1), 'yyyy-MM-dd'), useCallback(timeoutF => {
         const millis = parseISOMillis(timeoutF);
         // don't check whether it's in the future, because we're editing an existing delegation, which might have already timed out
         return millis === undefined
@@ -32,7 +37,7 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
             : { type: 'ok', value: millis };
     }, []));
 
-    const [newProjectId, projectNameF, setProjectNameF] = useParsed(delegation.project ? must(projectsById.get(delegation.project), "delegation's project does not actually exist").name : null, useCallback((projectNameF: string | null) => {
+    const [newProjectId, projectNameF, setProjectNameF] = useParsed(initProject.name as string | null, useCallback((projectNameF: string | null) => {
         if (projectNameF === null || projectNameF == '') return { type: 'ok', value: undefined };
         const project = projectsByName.get(projectNameF);
         if (project === undefined) return { type: 'err', message: "Project not found" };
@@ -43,28 +48,24 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
     // it feels kinda janky to be able to submit when you've typed a garbage project name.
     const [projectNameScratchF, setProjectNameScratchF] = useState('');
 
-    const [saveReq, setSaveReq] = useLoudRequestStatus();
+    const [req, setReq] = useLoudRequestStatus();
 
-    const canSubmit = saveReq.type !== 'working'
+    const canSubmit = req.type !== 'working'
         && newText.type === 'ok'
         && newTimeoutMillis.type === 'ok'
         && newProjectId.type === 'ok'
         && projectNameScratchF === (projectNameF ?? '');
 
-    const doSave = () => {
+    const doSave = useCallback(() => {
         if (!canSubmit) return;
-        watchReqStatus(setSaveReq, (async () => {
-            await update({ id: delegation._id, text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value });
-            onHide();
-        })());
-    };
+        watchReqStatus(setReq, onSubmit({ text: newText.value, timeoutMillis: newTimeoutMillis.value, project: newProjectId.value! }));
+    }, [canSubmit, newText, newTimeoutMillis, newProjectId, setReq, onSubmit]);
 
-    return <Dialog open fullWidth onClose={onHide} PaperProps={{
-        component: 'form',
-        onSubmit: (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); doSave(); },
+    return <form onSubmit={(e) => {
+        e.preventDefault();
+        doSave();
     }}>
-        <DialogTitle>Edit delegation</DialogTitle>
-        <DialogContent>
+        <Stack direction="column">
             <TextField
                 label="Text"
                 error={newText.type === 'err'}
@@ -99,16 +100,10 @@ export function EditDelegationModal({ delegation, projectsById, onHide }: {
                 inputValue={projectNameScratchF}
                 onInputChange={(_, name) => { setProjectNameScratchF(name) }}
             />
-        </DialogContent>
-
-        <DialogActions>
-            <Button variant="outlined" onClick={onHide}>
-                Close
-            </Button>
 
             <Button variant="contained" type="submit" disabled={!canSubmit}>
-                {saveReq.type === 'working' ? 'Saving...' : 'Save'}
+                {req.type === 'working' ? 'Saving...' : 'Save'}
             </Button>
-        </DialogActions>
-    </Dialog>;
+        </Stack>
+    </form>;
 }
