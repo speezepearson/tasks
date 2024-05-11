@@ -65,6 +65,7 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 <TextField
                     label="Text"
                     autoFocus
+                    multiline maxRows={6}
                     // no error={!!textErr} because the necessity is obvious
                     disabled={req.type === 'working'}
                     value={textF}

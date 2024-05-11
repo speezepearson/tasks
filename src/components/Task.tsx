@@ -50,7 +50,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 </Button>
             </DialogActions>
         </Dialog>}
-        <Stack direction="row" alignItems="center">
+        <Stack direction="row" alignItems="center" sx={{ py: 0.2, borderBottom: 1, borderColor: "InactiveBorder" }}>
             <Checkbox
                 checked={task.completedAtMillis !== undefined}
                 onChange={(e) => {
@@ -59,7 +59,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 }}
                 disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
             {" "}
-            <Typography noWrap sx={{ ml: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
+            <Typography sx={{ ml: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
                 role="button"
                 onClick={() => { setEditing(true); }}
             >
@@ -71,7 +71,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 allTasks={List(tasksById.values())}
                 allDelegations={List(delegationsById.values())}
             />}
-            <Button variant="outlined" onClick={() => { setShowBlockerModal(true); }}>
+            <Button variant="outlined" onClick={() => { setShowBlockerModal(true); }} sx={{ flexShrink: 0 }}>
                 +blocker
             </Button>
         </Stack>

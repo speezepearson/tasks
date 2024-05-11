@@ -71,7 +71,7 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
                 <TextField
                     label="Text"
                     // no error={!!textErr} because the necessity is obvious
-                    sx={{ mt: 1 }}
+                    multiline maxRows={6}
                     fullWidth
                     autoFocus
                     type="text"

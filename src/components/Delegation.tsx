@@ -17,7 +17,7 @@ export function Delegation({ delegation, projectsById }: { delegation: Doc<'dele
     const [editing, setEditing] = useState(false);
     const now = useNow();
 
-    return <Stack direction="row" sx={{ backgroundColor: delegation.project && projectsById.get(delegation.project)?.color }}>
+    return <Stack direction="row" alignItems="center" sx={{ py: 0.2, borderBottom: 1, borderColor: "InactiveBorder" }}>
         {editing && <Dialog open fullWidth
             disableRestoreFocus // HACK: required for autofocus: ...
             onClose={() => { setEditing(false) }}
@@ -54,7 +54,7 @@ export function Delegation({ delegation, projectsById }: { delegation: Doc<'dele
                 </Typography>}
             <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
         </Box>
-        <Typography sx={{ color: 'gray' }}>
+        <Typography sx={{ color: 'gray', flexShrink: 0 }}>
             (by {formatDate(delegation.timeoutMillis, 'yyyy-MM-dd')})
         </Typography>
     </Stack>;
