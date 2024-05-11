@@ -43,7 +43,7 @@ export function Delegation({ delegation, projectsById }: { delegation: Doc<'dele
             onChange={(e) => { watchReqStatus(setReq, setCompleted({ id: delegation._id, isCompleted: e.target.checked })) }}
         />
         <Box
-            sx={{ ml: 1, flexGrow: 1 }}
+            sx={{ mx: 1, flexGrow: 1 }}
             role="button"
             onClick={() => { setEditing(true); }}
         >

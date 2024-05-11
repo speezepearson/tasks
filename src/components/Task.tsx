@@ -59,7 +59,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 }}
                 disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
             {" "}
-            <Typography sx={{ ml: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
+            <Typography sx={{ mx: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
                 role="button"
                 onClick={() => { setEditing(true); }}
             >
