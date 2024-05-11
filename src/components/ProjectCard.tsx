@@ -5,7 +5,7 @@ import { Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, S
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { Task } from "./Task";
-import { EditProjectModal } from "./EditProjectModal";
+import { ProjectForm } from "./ProjectForm";
 import { listcmp } from "../common";
 import AddIcon from "@mui/icons-material/Add";
 import { Delegation } from "./Delegation";
@@ -23,21 +23,44 @@ export function ProjectCard({
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
     delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
 }) {
+    const archiveProject = useMutation(api.projects.archive);
+    const updateProject = useMutation(api.projects.update);
     const createTask = useMutation(api.tasks.create);
 
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
-    const [editing, setEditing] = useState(false);
     const allProjectsList = useMemo(() => List(projectsById.values()), [projectsById]);
 
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+    const [showEditProjectModal, setShowEditProjectModal] = useState(false);
 
     const showTasks = projectTasks.sortBy(t => [t.completedAtMillis !== undefined, -t._creationTime], listcmp);
 
     return <>
-        {editing && <EditProjectModal
-            project={project}
-            existingProjects={allProjectsList}
-            onHide={() => { setEditing(false); }} />}
+        {showEditProjectModal && <Dialog open fullWidth
+            disableRestoreFocus // HACK: required for autofocus: ...
+            onClose={() => { setShowEditProjectModal(false) }}
+        >
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogContent>
+                <ProjectForm
+                    init={project}
+                    forbidNames={allProjectsList.map(p => p.name).toSet().remove(project.name)}
+                    onArchive={async () => {
+                        console.log('archiving project', project);
+                        await archiveProject({ id: project._id });
+                        setShowEditProjectModal(false);
+                    }}
+                    onSubmit={async ({ name, color }) => {
+                        console.log('creating task', name, color);
+                        await updateProject({ id: project._id, name, color });
+                        setShowEditProjectModal(false);
+                    }}
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" color="secondary" onClick={() => { setShowAddTaskModal(false) }}>Close</Button>
+            </DialogActions>
+        </Dialog>}
         {showAddTaskModal && <Dialog open fullWidth
             disableRestoreFocus // HACK: required for autofocus: https://github.com/mui/material-ui/issues/33004
             onClose={() => { setShowAddTaskModal(false) }}
@@ -68,7 +91,7 @@ export function ProjectCard({
                 <Button onClick={() => { setShowAddTaskModal(true); }}>
                     <AddIcon />
                 </Button>
-                <Button onClick={() => { setEditing(true); }}>
+                <Button onClick={() => { setShowEditProjectModal(true); }}>
                     Edit
                 </Button>
                 <Button onClick={() => { setExpanded(!expanded); }}>

@@ -1,11 +1,10 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { List, Map } from "immutable";
+import { List, Map, Set } from "immutable";
 import { must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
-import { CreateProjectModal } from "../components/CreateProjectModal";
 import { getOutstandingBlockers } from "../common";
 import { mapundef, byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
@@ -13,6 +12,7 @@ import { QuickCaptureForm } from "../components/QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Doc } from "../../convex/_generated/dataModel";
+import { ProjectForm } from "../components/ProjectForm";
 
 type ProjectBlocks = { // eslint-disable-line @typescript-eslint/consistent-type-definitions
     actionable: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
@@ -29,6 +29,8 @@ export function Page() {
     const projects = mapundef(useQuery(api.projects.list), List);
     const tasks = mapundef(useQuery(api.tasks.list), List);
     const blockers = mapundef(useQuery(api.delegations.list), List);
+
+    const createProject = useMutation(api.projects.create);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
@@ -191,10 +193,25 @@ export function Page() {
                 <Typography variant="h4">Archives</Typography>
             </AccordionSummary>
             <AccordionDetails>
-                {showCreateProjectModal && <CreateProjectModal
-                    onHide={() => { setShowCreateProjectModal(false) }}
-                    existingProjects={projects ?? List()}
-                />}
+                {showCreateProjectModal && <Dialog open fullWidth
+                    disableRestoreFocus // HACK: required for autofocus: ...
+                    onClose={() => { setShowCreateProjectModal(false) }}
+                >
+                    <DialogTitle>Edit Project</DialogTitle>
+                    <DialogContent>
+                        <ProjectForm
+                            init={undefined}
+                            forbidNames={projects?.map(p => p.name).toSet() ?? Set()}
+                            onSubmit={async ({ name, color }) => {
+                                await createProject({ name, color });
+                                setShowCreateProjectModal(false);
+                            }}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button variant="outlined" color="secondary" onClick={() => { setShowCreateProjectModal(false) }}>Close</Button>
+                    </DialogActions>
+                </Dialog>}
                 <Button variant="contained" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
                 {(projectBlocks === undefined
                     || projectsById === undefined
