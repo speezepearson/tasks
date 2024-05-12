@@ -44,14 +44,18 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
         && newTimeoutMillis.type === 'ok'
         && projectFieldValid;
 
-    return <form onSubmit={(e) => {
-        e.preventDefault();
+    const submit = useCallback(() => {
         if (!canSubmit) return;
         watchReqStatus(setReq, onSubmit({ text: newText.value, timeoutMillis: newTimeoutMillis.value, project: project._id }).then(() => {
             if (!init) {
                 setTextF("");
             }
         }));
+    }, [canSubmit, newText, newTimeoutMillis, project, onSubmit, init, setTextF, setReq]);
+
+    return <form onSubmit={(e) => {
+        e.preventDefault();
+        submit();
     }}>
         <Stack direction="column" spacing={2} sx={{ pt: 2 }}>
             <FormControl>
@@ -64,6 +68,12 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
                     type="text"
                     value={textF}
                     onChange={(e) => { setTextF(e.target.value); }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            submit();
+                        }
+                    }}
                 />
                 <FormHelperText>You can use markdown here.</FormHelperText>
             </FormControl>

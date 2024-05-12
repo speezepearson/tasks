@@ -31,14 +31,14 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
         && text.type === 'ok'
         && projectFieldValid;
 
+    const submit = useCallback(() => {
+        if (!canSubmit) return;
+        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id }));
+    }, [canSubmit, text, project, onSubmit]);
+
     return <form onSubmit={(e) => {
         e.preventDefault();
-        if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id }).then(() => {
-            if (!init) {
-                setTextF("");
-            }
-        }));
+        submit();
     }}>
         <Stack direction="column" spacing={2} sx={{ pt: 2 }}>
             <FormControl>
@@ -50,6 +50,12 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                     disabled={req.type === 'working'}
                     value={textF}
                     onChange={(e) => { setTextF(e.target.value); }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            submit();
+                        }
+                    }}
                 />
                 <FormHelperText>You can use markdown here.</FormHelperText>
             </FormControl>
