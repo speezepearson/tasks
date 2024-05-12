@@ -103,7 +103,7 @@ export function ProjectCard({
             </Stack>
             {expanded && <>
                 <Stack direction="column" sx={{ mt: 1, ml: 4 }} divider={<Divider sx={{ my: 0.2 }} />}>
-                    {showTasks.map((task) => <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                    {showTasks.map((task) => <Box key={task._id} sx={{ px: 0.2, ":hover": { outline: '1px solid gray' } }}>
                         <Task
                             task={task}
                             projectsById={projectsById}
@@ -119,7 +119,7 @@ export function ProjectCard({
                     <Stack direction="column" sx={{ mt: 1, ml: 4 }} divider={<Divider sx={{ my: 0.2 }} />}>
                         {projectDelegations
                             .sortBy(d => -d.timeoutMillis)
-                            .map(d => <Box key={d._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                            .map(d => <Box key={d._id} sx={{ px: 0.2, ":hover": { outline: '1px solid gray' } }}>
                                 <Delegation delegation={d} projectsById={projectsById} />
                             </Box>)}
                     </Stack>
