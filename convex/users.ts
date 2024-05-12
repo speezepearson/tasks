@@ -1,3 +1,4 @@
+import { getOneFrom } from "convex-helpers/server/relationships";
 import { mutation } from "./_generated/server";
 
 export const store = mutation({
@@ -9,16 +10,7 @@ export const store = mutation({
         }
 
         // Check if we've already stored this identity before.
-        // Note: If you don't want to define an index right away, you can use
-        // ctx.db.query("users")
-        //  .filter(q => q.eq(q.field("tokenIdentifier"), identity.tokenIdentifier))
-        //  .unique();
-        const user = await ctx.db
-            .query("users")
-            .withIndex("tokenIdentifier", (q) =>
-                q.eq("tokenIdentifier", identity.tokenIdentifier),
-            )
-            .unique();
+        const user = await getOneFrom(ctx.db, 'users', 'tokenIdentifier', identity.tokenIdentifier);
         if (user !== null) {
             // If we've seen this identity before but the name has changed, patch the value.
             if (user.email !== identity.email) {

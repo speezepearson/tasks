@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutationWithUser, queryWithUser } from "./lib/withUser";
+import { getOneFiltered } from "./lib/helpers";
 
 export const create = mutationWithUser({
   args: {
@@ -18,7 +19,7 @@ export const create = mutationWithUser({
 export const archive = mutationWithUser({
   args: { id: v.id("projects") },
   handler: async (ctx, { id }) => {
-    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
       throw new Error('not found');
     }
     await ctx.db.patch(id, { archivedAtMillis: Date.now() });
@@ -32,7 +33,7 @@ export const update = mutationWithUser({
     color: v.optional(v.string()),
   },
   handler: async (ctx, { id, name, color }) => {
-    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
       throw new Error('not found');
     }
     const existingWithName = await ctx.db.query("projects").withIndex('owner_name', q => q.eq('owner', ctx.user._id).eq('name', name)).unique();
@@ -46,8 +47,8 @@ export const update = mutationWithUser({
 export const get = queryWithUser({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    const res = await ctx.db.get(args.id);
-    if (!(res?.owner === ctx.user._id)) {
+    const res = await getOneFiltered(ctx.db, args.id, 'owner', ctx.user._id);
+    if (res === null) {
       throw new Error('not found');
     }
     return res;

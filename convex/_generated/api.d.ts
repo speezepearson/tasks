@@ -16,6 +16,7 @@ import type {
 } from "convex/server";
 import type * as captures from "../captures.js";
 import type * as delegations from "../delegations.js";
+import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_withUser from "../lib/withUser.js";
 import type * as migrations from "../migrations.js";
 import type * as projects from "../projects.js";
@@ -33,6 +34,7 @@ import type * as users from "../users.js";
 declare const fullApi: ApiFromModules<{
   captures: typeof captures;
   delegations: typeof delegations;
+  "lib/helpers": typeof lib_helpers;
   "lib/withUser": typeof lib_withUser;
   migrations: typeof migrations;
   projects: typeof projects;

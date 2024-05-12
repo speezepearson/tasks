@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { mutationWithUser, queryWithUser } from "./lib/withUser";
+import { getManyFrom } from "convex-helpers/server/relationships";
+import { getOneFiltered } from "./lib/helpers";
 
 export const create = mutationWithUser({
   args: {
@@ -20,7 +22,7 @@ export const update = mutationWithUser({
     project: v.optional(v.id("projects")),
   },
   handler: async (ctx, { id, ...fields }) => {
-    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
       throw new Error('not found');
     }
     await ctx.db.patch(id, fields);
@@ -30,18 +32,18 @@ export const update = mutationWithUser({
 export const get = queryWithUser({
   args: { id: v.id("delegations") },
   handler: async (ctx, args) => {
-    const res = await ctx.db.get(args.id);
-    if (!(res?.owner === ctx.user._id)) {
+    const res = await getOneFiltered(ctx.db, args.id, 'owner', ctx.user._id);
+    if (res === null) {
       throw new Error('not found');
     }
-    return await ctx.db.get(args.id);
+    return res;
   },
 });
 
 export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("delegations").withIndex('owner', q => q.eq('owner', ctx.user._id)).collect();
+    return await getManyFrom(ctx.db, "delegations", "owner", ctx.user._id);
   },
 });
 
@@ -51,7 +53,7 @@ export const setCompleted = mutationWithUser({
     isCompleted: v.boolean(),
   },
   handler: async (ctx, { id, isCompleted }) => {
-    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
       throw new Error('not found');
     }
     await ctx.db.patch(id, { completedAtMillis: isCompleted ? Date.now() : undefined });

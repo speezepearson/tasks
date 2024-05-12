@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { mutationWithUser, queryWithUser } from "./lib/withUser";
 import { vBlocker } from "./schema";
+import { getManyFrom } from "convex-helpers/server/relationships";
+import { getOneFiltered } from "./lib/helpers";
 
 export const create = mutationWithUser({
   args: {
@@ -17,18 +19,15 @@ export const create = mutationWithUser({
 export const get = queryWithUser({
   args: { id: v.id("tasks") },
   handler: async (ctx, args) => {
-    const res = await ctx.db.get(args.id);
-    if (!(res?.owner === ctx.user._id)) {
-      throw new Error('not found');
-    }
-    return res;
+    const x = await getOneFiltered(ctx.db, args.id, 'owner', ctx.user._id);
+    return x;
   },
 });
 
 export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("tasks").withIndex('owner', q => q.eq('owner', ctx.user._id)).collect();
+    return await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id);
   },
 });
 
@@ -39,7 +38,7 @@ export const update = mutationWithUser({
     project: v.optional(v.id('projects')),
   },
   handler: async (ctx, { id, text, project }) => {
-    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
       throw new Error('not found');
     }
     await ctx.db.patch(id, { text, project });
@@ -52,7 +51,7 @@ export const setCompleted = mutationWithUser({
     isCompleted: v.boolean(),
   },
   handler: async (ctx, { id, isCompleted }) => {
-    if (!((await ctx.db.get(id))?.owner === ctx.user._id)) {
+    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
       throw new Error('not found');
     }
     await ctx.db.patch(id, { completedAtMillis: isCompleted ? Date.now() : undefined });
@@ -65,8 +64,8 @@ export const unlinkBlocker = mutationWithUser({
     blocker: vBlocker,
   },
   handler: async (ctx, { id, blocker }) => {
-    const task = await ctx.db.get(id);
-    if (!(task?.owner === ctx.user._id)) {
+    const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
+    if (task === null) {
       throw new Error('not found');
     }
     await ctx.db.patch(id, { blockers: task.blockers.filter((b) => !blockersEqual(b, blocker)) });
@@ -79,8 +78,8 @@ export const linkBlocker = mutationWithUser({
     blocker: vBlocker,
   },
   handler: async (ctx, { id, blocker }) => {
-    const task = await ctx.db.get(id);
-    if (!(task?.owner === ctx.user._id)) {
+    const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
+    if (task === null) {
       throw new Error('not found');
     }
     if (task.blockers.some((b) => blockersEqual(b, blocker))) {
@@ -89,7 +88,7 @@ export const linkBlocker = mutationWithUser({
     switch (blocker.type) {
       case 'task':
         await (async () => {
-          const b = await ctx.db.get(blocker.id);
+          const b = await getOneFiltered(ctx.db, blocker.id, 'owner', ctx.user._id);
           if (b === null) {
             throw new Error('Blocker task does not exist');
           }
@@ -100,7 +99,7 @@ export const linkBlocker = mutationWithUser({
         break;
       case 'delegation':
         await (async () => {
-          const b = await ctx.db.get(blocker.id);
+          const b = await getOneFiltered(ctx.db, blocker.id, 'owner', ctx.user._id);
           if (b === null) {
             throw new Error('Blocker delegation does not exist');
           }
