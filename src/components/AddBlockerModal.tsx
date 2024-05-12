@@ -7,28 +7,22 @@ import { parseISOMillis, useLoudRequestStatus, useNow, useParsed, watchReqStatus
 import { Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { formatDate, startOfDay } from "date-fns";
 
-export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
+export function AddBlockerModal({ onHide, task, autocompleteTasks, autocompleteDelegations }: {
     onHide: () => unknown;
     task: Doc<'tasks'>;
-    allTasks: List<Doc<'tasks'>>;
-    allDelegations: List<Doc<'delegations'>>;
+    autocompleteTasks: List<Doc<'tasks'>>;
+    autocompleteDelegations: List<Doc<'delegations'>>;
 }) {
     const linkBlocker = useMutation(api.tasks.linkBlocker);
     const createTask = useMutation(api.tasks.create);
     const createDelegation = useMutation(api.delegations.create);
     const today = startOfDay(useNow());
 
-    const tasksByText = useMemo(() => Map(allTasks
-        .filter(t => t._id !== task._id && (t.project === task.project) && t.completedAtMillis === undefined)
-        .map(t => [t.text, t]),
-    ), [allTasks, task]);
+    autocompleteTasks = useMemo(() => autocompleteTasks.filter(t => t._id !== task._id && (t.project === task.project) && t.completedAtMillis === undefined), [autocompleteTasks, task]);
+    autocompleteDelegations = useMemo(() => autocompleteDelegations.filter(d => (d.project === task.project) && d.completedAtMillis === undefined), [autocompleteDelegations, task]);
 
-    const delegationsByText = useMemo(() => Map(allDelegations
-        .filter(d => (d.project === task.project) && d.completedAtMillis === undefined)
-        .map(d => [d.text, d]),
-    ), [allDelegations, task]);
-
-    const allOptionTexts = useMemo(() => tasksByText.keySeq().concat(delegationsByText.keySeq()).sort().toArray(), [tasksByText, delegationsByText]);
+    const tasksByText = useMemo(() => Map(autocompleteTasks.map(t => [t.text, t])), [autocompleteTasks]);
+    const delegationsByText = useMemo(() => Map(autocompleteDelegations.map(d => [d.text, d])), [autocompleteDelegations]);
 
     const [textF, setTextF] = useState("");
     const text = textF.trim();
@@ -40,6 +34,7 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
         return { type: 'ok', value: n };
     }, [today]));
 
+    const autocompleteOptions = useMemo(() => autocompleteTasks.concat(autocompleteDelegations).toArray(), [autocompleteTasks, autocompleteDelegations]);
 
     const matchingTask = useMemo(() => tasksByText.get(text), [text, tasksByText]);
     const matchingDelegation = useMemo(() => delegationsByText.get(text), [text, delegationsByText]);
@@ -151,13 +146,16 @@ export function AddBlockerModal({ onHide, task, allTasks, allDelegations }: {
                     freeSolo
                     fullWidth
                     ref={inputRef}
-                    PaperComponent={({ children, ...props }) => <Box {...props} sx={{ bgcolor: 'white', border: 1, opacity: 0.8, }}>{children}</Box>}
+                    // PaperComponent={({ children, ...props }) => <Box {...props} sx={{ bgcolor: 'white', border: 1, opacity: 0.8, }}>{children}</Box>}
                     autoFocus
                     blurOnSelect={false}
-                    options={allOptionTexts}
-                    renderInput={(params) => <TextField {...params} label="Blocker" sx={{ mt: 1 }} />}
+                    options={autocompleteOptions}
                     inputValue={textF}
                     onInputChange={(_, value) => { setTextF(value) }}
+                    renderInput={(params) => <TextField {...params} label="Blocker" sx={{ mt: 1 }} />}
+                    renderOption={(props, blocker) => <li {...props}><Typography noWrap>{blocker.text}</Typography></li>}
+                    getOptionLabel={(blocker) => typeof blocker === 'string' ? blocker : blocker.text}
+                    getOptionKey={(blocker) => typeof blocker === 'string' ? blocker : blocker._id}
                 />
                 {actionsSection}
             </Stack>

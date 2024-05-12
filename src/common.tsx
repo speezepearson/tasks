@@ -193,3 +193,10 @@ export function useParsed<Raw, Parsed>(
     const validated = useMemo(() => validate(field), [field, validate]);
     return [validated, field, setField];
 }
+
+export function useMiscProject(projectsById: Map<Id<'projects'>, Doc<'projects'>>): Doc<'projects'> {
+    return useMemo(
+        () => must(projectsById.valueSeq().find(p => p.name === 'Misc'), 'Misc project must exist'),
+        [projectsById],
+    );
+}

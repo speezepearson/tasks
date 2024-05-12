@@ -68,8 +68,8 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
             {showBlockerModal && <AddBlockerModal
                 onHide={() => { setShowBlockerModal(false); }}
                 task={task}
-                allTasks={List(tasksById.values())}
-                allDelegations={List(delegationsById.values())}
+                autocompleteTasks={List(tasksById.values())}
+                autocompleteDelegations={List(delegationsById.values())}
             />}
             <Button variant="outlined" onClick={() => { setShowBlockerModal(true); }} sx={{ flexShrink: 0 }}>
                 +blocker
