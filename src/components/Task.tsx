@@ -50,7 +50,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 </Button>
             </DialogActions>
         </Dialog>}
-        <Stack direction="row" alignItems="center" sx={{ py: 0.2, borderBottom: 1, borderColor: "InactiveBorder" }}>
+        <Stack direction="row" alignItems="center" sx={{ py: 0.2 }}>
             <Checkbox
                 checked={task.completedAtMillis !== undefined}
                 onChange={(e) => {

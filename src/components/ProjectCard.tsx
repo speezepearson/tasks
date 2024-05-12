@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { List, Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
+import { Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Stack, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { Task } from "./Task";
@@ -101,30 +101,30 @@ export function ProjectCard({
                     }
                 </Button>
             </Stack>
-            <Stack direction="column" sx={{ mt: 1, ml: 4, display: expanded ? 'block' : 'none' }}>
-                {showTasks.map((task) => <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                    <Task
-                        task={task}
-                        projectsById={projectsById}
-                        tasksById={tasksById}
-                        delegationsById={delegationsById}
-                    />
-                </Box>
-                )}
-            </Stack>
-            {projectDelegations.size > 0 && <Box sx={{ mx: 2 }}>
-                <hr />
-                <Typography>
-                    Delegations
-                </Typography>
-                <Stack direction="column" sx={{ mt: 1, ml: 2, display: expanded ? 'block' : 'none' }}>
-                    {projectDelegations
-                        .sortBy(d => -d.timeoutMillis)
-                        .map(d => <Box key={d._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
-                            <Delegation delegation={d} projectsById={projectsById} />
-                        </Box>)}
+            {expanded && <>
+                <Stack direction="column" sx={{ mt: 1, ml: 4 }} divider={<Divider sx={{ my: 0.2 }} />}>
+                    {showTasks.map((task) => <Box key={task._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                        <Task
+                            task={task}
+                            projectsById={projectsById}
+                            tasksById={tasksById}
+                            delegationsById={delegationsById}
+                        />
+                    </Box>
+                    )}
                 </Stack>
-            </Box>}
+                {projectDelegations.size > 0 && <>
+                    <Divider variant="middle" sx={{ my: 1, borderBottomWidth: 2 }} />
+                    <Typography sx={{ ml: 2 }}>Delegations</Typography>
+                    <Stack direction="column" sx={{ mt: 1, ml: 4 }} divider={<Divider sx={{ my: 0.2 }} />}>
+                        {projectDelegations
+                            .sortBy(d => -d.timeoutMillis)
+                            .map(d => <Box key={d._id} sx={{ ":hover": { outline: '1px solid gray' } }}>
+                                <Delegation delegation={d} projectsById={projectsById} />
+                            </Box>)}
+                    </Stack>
+                </>}
+            </>}
         </Card>
     </>;
 }
