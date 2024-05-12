@@ -25,7 +25,7 @@ export function Delegation({ delegation, projectsById }: { delegation: Doc<'dele
             <DialogTitle>Edit Project</DialogTitle>
             <DialogContent>
                 <DelegationForm
-                    init={undefined}
+                    init={delegation}
                     initProject={projectsById.get(delegation.project)}
                     projectsById={projectsById}
                     onSubmit={async (fields) => {
