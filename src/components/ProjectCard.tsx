@@ -27,7 +27,7 @@ export function ProjectCard({
     const updateProject = useMutation(api.projects.update);
     const createTask = useMutation(api.tasks.create);
 
-    const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
+    const [expanded, setExpanded] = useState(!(projectTasks.isEmpty() && projectDelegations.isEmpty()));
     const allProjectsList = useMemo(() => List(projectsById.values()), [projectsById]);
 
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -96,8 +96,8 @@ export function ProjectCard({
                 </Button>
                 <Button onClick={() => { setExpanded(!expanded); }}>
                     {expanded
-                        ? <ExpandMoreIcon />
-                        : <ExpandLessIcon />
+                        ? <ExpandLessIcon />
+                        : <ExpandMoreIcon />
                     }
                 </Button>
             </Stack>
