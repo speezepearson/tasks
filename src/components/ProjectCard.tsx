@@ -8,26 +8,23 @@ import { Task } from "./Task";
 import { ProjectForm } from "./ProjectForm";
 import { listcmp } from "../common";
 import AddIcon from "@mui/icons-material/Add";
-import { Delegation } from "./Delegation";
 import { TaskForm } from "./TaskForm";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 export function ProjectCard({
-    project, projectTasks, projectDelegations, projectsById, tasksById, delegationsById,
+    project, projectTasks, projectsById, tasksById,
 }: {
     project: Doc<'projects'>;
     projectTasks: List<Doc<'tasks'>>;
-    projectDelegations: List<Doc<'delegations'>>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
-    delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
 }) {
     const archiveProject = useMutation(api.projects.archive);
     const updateProject = useMutation(api.projects.update);
     const createTask = useMutation(api.tasks.create);
 
-    const [expanded, setExpanded] = useState(!(projectTasks.isEmpty() && projectDelegations.isEmpty()));
+    const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const allProjectsList = useMemo(() => List(projectsById.values()), [projectsById]);
 
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -107,22 +104,10 @@ export function ProjectCard({
                             task={task}
                             projectsById={projectsById}
                             tasksById={tasksById}
-                            delegationsById={delegationsById}
                         />
                     </Box>
                     )}
                 </Stack>
-                {projectDelegations.size > 0 && <>
-                    <Divider variant="middle" sx={{ my: 1, borderBottomWidth: 2 }} />
-                    <Typography sx={{ ml: 2 }}>Delegations</Typography>
-                    <Stack direction="column" sx={{ mt: 1, ml: 4 }} divider={<Divider sx={{ my: 0.2 }} />}>
-                        {projectDelegations
-                            .sortBy(d => -d.timeoutMillis)
-                            .map(d => <Box key={d._id} sx={{ px: 0.2, ":hover": { outline: '1px solid gray' } }}>
-                                <Delegation delegation={d} projectsById={projectsById} />
-                            </Box>)}
-                    </Stack>
-                </>}
             </>}
         </Card>
     </>;

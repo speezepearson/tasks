@@ -1,5 +1,7 @@
 import { makeMigration } from "convex-helpers/server/migrations";
 import { internalMutation } from "./_generated/server";
+import { getManyFrom } from "convex-helpers/server/relationships";
+import { Id } from "./_generated/dataModel";
 
 const migration = makeMigration(internalMutation, {
     migrationTable: "migrations",
@@ -49,6 +51,40 @@ export const createInboxProjects = migration({
         await Promise.all(captures.map(async (c) => {
             await ctx.db.insert("tasks", { owner: doc._id, text: c.text, project: inboxProject, blockers: [] });
             await ctx.db.patch(c._id, { archivedAtMillis: new Date().getTime() });
+        }));
+    },
+});
+
+export const abandonDelegations = migration({
+    table: "users",
+    migrateOne: async (ctx, doc) => {
+        const delegations = await getManyFrom(ctx.db, "delegations", "owner", doc._id);
+        console.log(`patching ${delegations.length} delegations for user ${doc._id}`)
+        const idMap: Record<Id<'delegations'>, Id<'tasks'>> = {};
+        await Promise.all(delegations.map(async (d) => {
+            const newTaskId = await ctx.db.insert("tasks", { owner: doc._id, text: d.text, project: d.project, blockers: [{ type: 'time', millis: d.timeoutMillis }] });
+            idMap[d._id] = newTaskId;
+            await ctx.db.patch(d._id, { completedAtMillis: new Date().getTime() });
+        }));
+
+        const tasks = await getManyFrom(ctx.db, "tasks", "owner", doc._id);
+        await Promise.all(tasks.map(async (t) => {
+            const needsPatch = [];
+            const blockers = t.blockers.map((b) => {
+                if (b.type === 'delegation') {
+                    needsPatch.push(b.id);
+                    const newTaskId = idMap[b.id];
+                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                    if (newTaskId === undefined) {
+                        throw new Error(`missing new task id for delegation ${b.id}`);
+                    }
+                    return { type: 'task' as const, id: newTaskId };
+                }
+                return b;
+            });
+            if (needsPatch.length > 0) {
+                await ctx.db.patch(t._id, { blockers });
+            }
         }));
     },
 });

@@ -2,8 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map, Set } from "immutable";
-import { useListify, must, textMatches, useNow } from "../common";
-import { Inbox } from "../components/Inbox";
+import { useListify, must, textMatches, useNow, listcmp } from "../common";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
 import { byUniqueKey } from "../common";
@@ -15,14 +14,14 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { ProjectForm } from "../components/ProjectForm";
 
 type ProjectBlocks = { // eslint-disable-line @typescript-eslint/consistent-type-definitions
-    actionable: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
-    blocked: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
-    historic: { tasks: List<Doc<'tasks'>>, delegations: List<Doc<'delegations'>> },
+    actionable: { tasks: List<Doc<'tasks'>> },
+    blocked: { tasks: List<Doc<'tasks'>> },
+    historic: { tasks: List<Doc<'tasks'>> },
 }
 const initialProjectBlock = (): ProjectBlocks => ({
-    actionable: { tasks: List(), delegations: List() },
-    blocked: { tasks: List(), delegations: List() },
-    historic: { tasks: List(), delegations: List() },
+    actionable: { tasks: List() },
+    blocked: { tasks: List() },
+    historic: { tasks: List() },
 });
 
 
@@ -32,26 +31,23 @@ export function Page() {
 
     const projects = useListify(useQuery(api.projects.list));
     const tasks = useListify(useQuery(api.tasks.list));
-    const blockers = useListify(useQuery(api.delegations.list));
-    const captures = useListify(useQuery(api.captures.list, { limit: 10 }));
 
     const createProject = useMutation(api.projects.create);
 
     const projectsById = useMemo(() => projects && byUniqueKey(projects, (p) => p._id), [projects]);
     const tasksById = useMemo(() => tasks && byUniqueKey(tasks, (t) => t._id), [tasks]);
-    const delegationsById = useMemo(() => blockers && byUniqueKey(blockers, (b) => b._id), [blockers]);
 
     const now = useNow();
 
     const outstandingBlockers = useMemo(() => {
-        return tasksById && delegationsById && tasks && Map(
+        return tasksById && tasks && Map(
             tasks
-                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, delegationsById, now })])
+                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, now })])
         );
-    }, [tasks, tasksById, delegationsById, now]);
+    }, [tasks, tasksById, now]);
 
     const projectBlocks: undefined | Map<Doc<'projects'>, ProjectBlocks> = useMemo(() => {
-        if (projects === undefined || outstandingBlockers === undefined || tasks === undefined || delegationsById === undefined || blockers === undefined || projectsById === undefined) return undefined;
+        if (projects === undefined || outstandingBlockers === undefined || tasks === undefined || projectsById === undefined) return undefined;
 
         const taskBins: Map<Doc<'tasks'>, keyof ProjectBlocks> = Map(tasks.map(t => {
             if (t.completedAtMillis !== undefined
@@ -62,24 +58,12 @@ export function Page() {
             return [t, 'actionable'];
         }));
 
-        const delegationBins: Map<Doc<'delegations'>, keyof ProjectBlocks> = Map(blockers.map(d => {
-            if (d.completedAtMillis !== undefined
-                || must(projectsById.get(d.project), "delegation references nonexistent project").archivedAtMillis !== undefined)
-                return [d, 'historic'];
-            if (d.timeoutMillis < now.getTime())
-                return [d, 'actionable'];
-            return [d, 'blocked'];
-        }))
-
         let res: Map<Doc<'projects'>, ProjectBlocks> = Map();
         taskBins.forEach((bin, t) => res = res.update(
             must(projectsById.get(t.project), "task references nonexistent project"),
             initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], tasks: pb[bin].tasks.push(t) } })));
-        delegationBins.forEach((bin, d) => res = res.update(
-            must(projectsById.get(d.project), "delegation references nonexistent project"),
-            initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], delegations: pb[bin].delegations.push(d) } })));
         return res;
-    }, [tasks, blockers, now, delegationsById, outstandingBlockers, projects, projectsById]);
+    }, [tasks, outstandingBlockers, projects, projectsById]);
 
     const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
     const [nextActionFilterF, setNextActionFilterF] = useState("");
@@ -119,7 +103,6 @@ export function Page() {
                 <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
             </DialogActions>
         </Dialog>}
-        {captures && captures.size > 0 && <Inbox captures={captures} />}
 
         <Accordion defaultExpanded sx={{ mt: 4 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -137,24 +120,20 @@ export function Page() {
                 {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
-                    || delegationsById === undefined
                 )
                     ? <Box>Loading...</Box>
                     : projectBlocks
                         .entrySeq()
-                        .sortBy(([p]) => p.name)
+                        .sortBy(([p]) => [p.name !== 'Inbox', p.name], listcmp)
                         .map(([project, block]) => {
                             const projectTasks = block.actionable.tasks.filter(t => textMatches(t.text, nextActionFilterF));
-                            const projectDelegations = block.actionable.delegations.filter(d => textMatches(d.text, nextActionFilterF));
-                            if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                            if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
                                 key={project._id}
                                 project={project}
                                 projectTasks={projectTasks}
-                                projectDelegations={projectDelegations}
                                 projectsById={projectsById}
                                 tasksById={tasksById}
-                                delegationsById={delegationsById}
                             />
                         })}
             </AccordionDetails>
@@ -168,7 +147,6 @@ export function Page() {
                 {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
-                    || delegationsById === undefined
                 )
                     ? <Box>Loading...</Box>
                     : projectBlocks
@@ -176,16 +154,13 @@ export function Page() {
                         .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
                             const projectTasks = block.blocked.tasks;
-                            const projectDelegations = block.blocked.delegations;
-                            if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                            if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
                                 key={project._id}
                                 project={project}
                                 projectTasks={projectTasks}
-                                projectDelegations={projectDelegations}
                                 projectsById={projectsById}
                                 tasksById={tasksById}
-                                delegationsById={delegationsById}
                             />
                         })}
             </AccordionDetails>
@@ -219,7 +194,6 @@ export function Page() {
                 {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
-                    || delegationsById === undefined
                 )
                     ? <Box>Loading...</Box>
                     : projectBlocks
@@ -227,16 +201,13 @@ export function Page() {
                         .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
                             const projectTasks = block.historic.tasks;
-                            const projectDelegations = block.historic.delegations;
-                            if (projectTasks.isEmpty() && projectDelegations.isEmpty()) return null;
+                            if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
                                 key={project._id}
                                 project={project}
                                 projectTasks={projectTasks}
-                                projectDelegations={projectDelegations}
                                 projectsById={projectsById}
                                 tasksById={tasksById}
-                                delegationsById={delegationsById}
                             />
                         })}
             </AccordionDetails>

@@ -96,10 +96,9 @@ export function guessTimeoutMillisFromText(text: string): { withoutDate: string;
     };
 }
 
-export function getOutstandingBlockers({ task, tasksById, delegationsById, now }: {
+export function getOutstandingBlockers({ task, tasksById, now }: {
     task: Doc<'tasks'>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
-    delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
     now: Date;
 }): List<Doc<'tasks'>['blockers'][0]> {
     return List(task.blockers.filter((blocker) => {
@@ -109,7 +108,7 @@ export function getOutstandingBlockers({ task, tasksById, delegationsById, now }
             case "time":
                 return blocker.millis > now.getTime();
             case "delegation":
-                return must(delegationsById.get(blocker.id), "blocker references nonexistent delegation").completedAtMillis === undefined;
+                throw new Error("delegations should not be blockers anymore");
         }
     }));
 }

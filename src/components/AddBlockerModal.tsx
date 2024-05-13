@@ -6,28 +6,24 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { useLoudRequestStatus, watchReqStatus } from "../common";
 import { Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 
-export function AddBlockerModal({ onHide, task, autocompleteTasks, autocompleteDelegations }: {
+export function AddBlockerModal({ onHide, task, autocompleteTasks }: {
     onHide: () => unknown;
     task: Doc<'tasks'>;
     autocompleteTasks: List<Doc<'tasks'>>;
-    autocompleteDelegations: List<Doc<'delegations'>>;
 }) {
     const linkBlocker = useMutation(api.tasks.linkBlocker);
     const createTask = useMutation(api.tasks.create);
 
     autocompleteTasks = useMemo(() => autocompleteTasks.filter(t => t._id !== task._id && (t.project === task.project) && t.completedAtMillis === undefined), [autocompleteTasks, task]);
-    autocompleteDelegations = useMemo(() => autocompleteDelegations.filter(d => (d.project === task.project) && d.completedAtMillis === undefined), [autocompleteDelegations, task]);
 
     const tasksByText = useMemo(() => Map(autocompleteTasks.map(t => [t.text, t])), [autocompleteTasks]);
-    const delegationsByText = useMemo(() => Map(autocompleteDelegations.map(d => [d.text, d])), [autocompleteDelegations]);
 
     const [textF, setTextF] = useState("");
     const text = textF.trim();
 
-    const autocompleteOptions = useMemo(() => autocompleteTasks.concat(autocompleteDelegations).toArray(), [autocompleteTasks, autocompleteDelegations]);
+    const autocompleteOptions = useMemo(() => autocompleteTasks.toArray(), [autocompleteTasks]);
 
     const matchingTask = useMemo(() => tasksByText.get(text), [text, tasksByText]);
-    const matchingDelegation = useMemo(() => delegationsByText.get(text), [text, delegationsByText]);
 
     const [req, setReq] = useLoudRequestStatus();
 
@@ -52,16 +48,6 @@ export function AddBlockerModal({ onHide, task, autocompleteTasks, autocompleteD
                     }).then(onHide))
                 },
                 actionsSection: <Box><Button type="submit" variant="contained" disabled={req.type === 'working'}>Link task</Button></Box>,
-            };
-        if (matchingDelegation !== undefined)
-            return {
-                onSubmit: () => {
-                    watchReqStatus(setReq, linkBlocker({
-                        id: task._id,
-                        blocker: { type: 'delegation', id: matchingDelegation._id },
-                    }).then(onHide))
-                },
-                actionsSection: <Box><Button type="submit" variant="contained" disabled={req.type === 'working'}>Link delegation</Button></Box>,
             };
 
         const allDisabled = req.type === 'working' || text === "";

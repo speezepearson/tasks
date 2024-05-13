@@ -12,16 +12,14 @@ import { getOutstandingBlockers } from "../common";
 import { TaskForm } from "./TaskForm";
 import ClearIcon from "@mui/icons-material/Clear";
 
-export function Task({ task, projectsById, tasksById, delegationsById }: {
+export function Task({ task, projectsById, tasksById }: {
     task: Doc<'tasks'>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
-    delegationsById: Map<Id<'delegations'>, Doc<'delegations'>>;
 }) {
     const updateTask = useMutation(api.tasks.update);
     const unlinkBlocker = useMutation(api.tasks.unlinkBlocker);
     const setCompleted = useMutation(api.tasks.setCompleted);
-    const setDelegationCompleted = useMutation(api.delegations.setCompleted);
 
     const [editing, setEditing] = useState(false);
     const [showBlockerModal, setShowBlockerModal] = useState(false);
@@ -29,7 +27,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
     const now = useNow();
     const [req, setReq] = useLoudRequestStatus();
 
-    const outstandingBlockers = getOutstandingBlockers({ task, tasksById, delegationsById: delegationsById, now });
+    const outstandingBlockers = getOutstandingBlockers({ task, tasksById, now });
     const blocked = outstandingBlockers.size > 0;
     return <Box>
         {editing && <Dialog open onClose={() => { setEditing(false) }} fullWidth>
@@ -96,7 +94,6 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 onHide={() => { setShowBlockerModal(false); }}
                 task={task}
                 autocompleteTasks={List(tasksById.values())}
-                autocompleteDelegations={List(delegationsById.values())}
             />}
             <Button variant="outlined" onClick={() => { setShowBlockerModal(true); }} sx={{ flexShrink: 0 }}>
                 +blocker
@@ -127,18 +124,7 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                                     {" "} {unlinkButton}
                                 </Box>;
                             case "delegation":
-                                return (() => {
-                                    const delegation = must(delegationsById.get(blocker.id), "task-blocker references nonexistent delegation");
-                                    return <Box key={blocker.id}>
-                                        <Checkbox
-                                            checked={delegation.completedAtMillis !== undefined}
-                                            onChange={(e) => { watchReqStatus(setReq, setDelegationCompleted({ id: blocker.id, isCompleted: e.target.checked })) }}
-                                        />
-                                        {" "}
-                                        <SingleLineMarkdown>{delegation.text}</SingleLineMarkdown>
-                                        {" "} {unlinkButton}
-                                    </Box>;
-                                })();
+                                throw new Error("delegations should not be blockers anymore");
                         }
                     })}
                 </Box>
