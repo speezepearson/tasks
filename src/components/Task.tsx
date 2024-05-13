@@ -34,7 +34,6 @@ export function Task({ task, projectsById, tasksById }: {
                 <TaskForm
                     init={task}
                     onSubmit={async ({ text, project, tags, blockedUntilMillis, blockers }) => {
-                        console.log('updating task', { text, project, tags, blockedUntilMillis, blockers });
                         await updateTask({
                             id: task._id,
                             text,

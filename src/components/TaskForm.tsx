@@ -67,7 +67,6 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 }
                 return { type: 'task' as const, id: blocker._id };
             }));
-            console.log('settingblcokers', fullBlockers)
             await onSubmit({
                 text: text.value,
                 project: project._id,

@@ -43,12 +43,10 @@ export function ProjectCard({
                     init={project}
                     forbidNames={allProjectsList.map(p => p.name).toSet().remove(project.name)}
                     onArchive={async () => {
-                        console.log('archiving project', project);
                         await archiveProject({ id: project._id });
                         setShowEditProjectModal(false);
                     }}
                     onSubmit={async ({ name, color }) => {
-                        console.log('creating task', name, color);
                         await updateProject({ id: project._id, name, color });
                         setShowEditProjectModal(false);
                     }}
