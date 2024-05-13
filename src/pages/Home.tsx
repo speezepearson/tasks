@@ -143,6 +143,8 @@ export function Page() {
             </AccordionDetails>
         </Accordion>
 
+        <Button variant="contained" sx={{ mx: 'auto' }} onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
+
         <Accordion sx={{ mt: 4 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h4">Blocked</Typography>
@@ -194,7 +196,6 @@ export function Page() {
                         <Button variant="outlined" color="secondary" onClick={() => { setShowCreateProjectModal(false) }}>Close</Button>
                     </DialogActions>
                 </Dialog>}
-                <Button variant="contained" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
                 {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
