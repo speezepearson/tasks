@@ -34,9 +34,9 @@ export const get = queryWithUser({
 
 export const listTags = queryWithUser({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const tasks = await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id);
-    const tags = (await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id)).reduce((acc, task) => {
+    const tags = tasks.reduce((acc, task) => {
       return acc.union(Set(task.tags));
     }, Set<string>());
     return tags.toList().sort().toArray();

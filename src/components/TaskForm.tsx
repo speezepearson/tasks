@@ -27,7 +27,6 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     }, []));
 
     const [tags, setTags] = useState(List(init?.tags ?? []))
-    useEffect(() => console.log(tags.toJS()), [tags])
 
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
 
