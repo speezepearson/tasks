@@ -36,8 +36,14 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
 
     const submit = useCallback(() => {
         if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id, tags: List(tags).sort().toArray() }));
-    }, [canSubmit, text, project, tags, onSubmit]);
+        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id, tags: List(tags).sort().toArray() }).then(() => {
+            if (!init) {
+                setTextF("");
+                setProject(initProject ?? miscProject);
+                setTags(List());
+            }
+        }));
+    }, [canSubmit, text, project, tags, onSubmit, init, initProject, miscProject, setTextF]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();

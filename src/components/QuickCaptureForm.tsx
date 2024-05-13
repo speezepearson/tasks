@@ -17,7 +17,8 @@ export function QuickCaptureForm() {
     const activeContentRef = useRef<HTMLDivElement>(null);
     const refocus = useCallback(() => {
         setTimeout(() => {
-            activeContentRef.current?.querySelector('input')?.focus()
+            const input = activeContentRef.current?.querySelector('input,textarea') as HTMLInputElement | HTMLTextAreaElement | null;
+            input?.focus()
         }, 0)
     }, [activeContentRef]);
 
@@ -34,14 +35,14 @@ export function QuickCaptureForm() {
             },
             {
                 name: "Task",
-                content: <TaskForm
+                content: projectsById && <TaskForm
                     projectsById={projectsById}
                     onSubmit={args => createTask(args).then(refocus)}
                 />,
             },
             {
                 name: "Delegation",
-                content: <DelegationForm
+                content: projectsById && <DelegationForm
                     projectsById={projectsById}
                     onSubmit={args => createDelegation(args).then(refocus)}
                 />,

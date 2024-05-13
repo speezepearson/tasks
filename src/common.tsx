@@ -131,9 +131,9 @@ export function useListify<T>(xs: T[] | undefined): List<T> | undefined {
     return useMemo(() => xs === undefined ? undefined : List(xs), [xs]);
 }
 
-export function useMapify<T, Field extends keyof T>(xs: T[] | undefined, field: Field): typeof xs extends undefined ? undefined : Map<T[Field], T> {
+export function useMapify<T, Field extends keyof T>(xs: T[] | undefined, field: Field): Map<T[Field], T> | undefined {
     return useMemo(
-        () => ((xs === undefined ? undefined : Map(xs.map(x => [x[field], x]))) as typeof xs extends undefined ? undefined : Map<T[Field], T>),
+        () => xs === undefined ? undefined : Map(xs.map(x => [x[field], x])),
         [xs, field],
     );
 }
