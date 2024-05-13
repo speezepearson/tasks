@@ -19,7 +19,9 @@ export function TagAutocomplete({ value, onChange, disabled }: {
         multiple
         freeSolo
         options={options ?? []}
-        renderInput={(params) => <TextField {...params} label="Tags" />}
+        renderInput={(params) => <TextField {...params} label="Tags"
+            multiline rows={1} // hack to make Enter work for creating new tags on Android/Chrome: https://github.com/mui/material-ui/issues/29429
+        />}
         value={valueArr}
         blurOnSelect={false}
         onChange={(_, newValue) => { onChange(List(newValue)); }}
