@@ -5,19 +5,19 @@ import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui
 import { List, Map } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
 import { TagAutocomplete } from "./TagAutocomplete";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { formatDate } from "date-fns";
 import { BlockerAutocomplete } from "./BlockerAutocomplete";
+import { NewBlockers } from "../../convex/tasks";
 
 export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     init?: Doc<'tasks'>;
     initProject?: Doc<'projects'>;
     projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
-    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags' | 'blockedUntilMillis' | 'blockers'>) => Promise<unknown>;
+    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags' | 'blockedUntilMillis'> & { blockers: NewBlockers }) => Promise<unknown>;
 }) {
     const inbox = useQuery(api.projects.getInbox);
-    const createTask = useMutation(api.tasks.create);
     const allTasks = useMapify(useQuery(api.tasks.list), '_id');
 
     initProject = useMemo(() => {
@@ -60,19 +60,12 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     const submit = useCallback(() => {
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            const fullBlockers: Doc<'tasks'>['blockers'] = await Promise.all(blockers.map(async blocker => {
-                if (typeof blocker === 'string') {
-                    const id = await createTask({ text: blocker, project: project._id });
-                    return { type: 'task' as const, id };
-                }
-                return { type: 'task' as const, id: blocker._id };
-            }));
             await onSubmit({
                 text: text.value,
                 project: project._id,
                 tags: List(tags).sort().toArray(),
                 blockedUntilMillis: blockedUntilMillis.value,
-                blockers: fullBlockers,
+                blockers: blockers.map(b => typeof b === 'string' ? { type: 'newTask' as const, text: b } : { type: 'task' as const, id: b._id }).toArray(),
             }).then(() => {
                 if (!init) {
                     setTextF("");
@@ -83,7 +76,7 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 }
             })
         })());
-    }, [canSubmit, text, project, tags, onSubmit, init, initProject, setTextF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers, createTask]);
+    }, [canSubmit, text, project, tags, onSubmit, init, initProject, setTextF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();

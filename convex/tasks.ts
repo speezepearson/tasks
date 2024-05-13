@@ -1,26 +1,34 @@
 import { v } from "convex/values";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { mutationWithUser, queryWithUser } from "./lib/withUser";
 import { vBlocker } from "./schema";
 import { getManyFrom } from "convex-helpers/server/relationships";
 import { getOneFiltered } from "./lib/helpers";
 import { Set } from "immutable";
+import { MutationCtx } from "./_generated/server";
+
+const vNewBlockers = v.array(v.union(
+  v.object({ type: v.literal('newTask'), text: v.string() }),
+  vBlocker,
+))
+export type NewBlockers = typeof vNewBlockers.type;
 
 export const create = mutationWithUser({
   args: {
     text: v.string(),
     blockedUntilMillis: v.optional(v.number()),
-    blockers: v.optional(v.array(vBlocker)),
+    blockers: v.optional(vNewBlockers),
     project: v.id('projects'),
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const blockers = await concretizeBlockers(ctx, args.blockers ?? [], args.project);
     return await ctx.db.insert("tasks", {
       owner: ctx.user._id,
       text: args.text,
       project: args.project,
       blockedUntilMillis: args.blockedUntilMillis,
-      blockers: args.blockers ?? [],
+      blockers,
       tags: args.tags ?? [],
     });
   },
@@ -65,7 +73,7 @@ export const update = mutationWithUser({
     text: v.optional(v.string()),
     project: v.optional(v.id('projects')),
     blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
-    blockers: v.optional(v.array(vBlocker)),
+    blockers: v.optional(vNewBlockers),
     addTags: v.optional(v.array(v.string())),
     delTags: v.optional(v.array(v.string())),
   },
@@ -85,12 +93,12 @@ export const update = mutationWithUser({
       }
       return Set(task.tags).union(add).subtract(del).toList().sort().toArray();
     })();
-    console.log('updating task', id, { text, project, tags, blockedUntilMillis });
+    const fullBlockers = blockers && await concretizeBlockers(ctx, blockers, task.project);
     await ctx.db.patch(id, {
       ...(text !== undefined ? { text } : {}),
       ...(project !== undefined ? { project } : {}),
       ...(blockedUntilMillis !== undefined ? { blockedUntilMillis: blockedUntilMillis.new } : {}),
-      ...(blockers !== undefined ? { blockers } : {}),
+      ...(fullBlockers !== undefined ? { blockers: fullBlockers } : {}),
       ...(tags !== undefined ? { tags } : {}),
     });
   },
@@ -152,6 +160,27 @@ export const linkBlocker = mutationWithUser({
     await ctx.db.patch(id, { blockers: [...task.blockers, blocker] });
   },
 });
+
+async function concretizeBlockers(
+  ctx: MutationCtx & { user: Doc<'users'> },
+  blockers: NewBlockers,
+  project: Id<'projects'>,
+) {
+
+  return await Promise.all((blockers).map(async (blocker) => {
+    if (blocker.type === 'newTask') {
+      const newTaskId = await ctx.db.insert("tasks", {
+        owner: ctx.user._id,
+        text: blocker.text,
+        project: project,
+        blockers: [],
+        tags: [],
+      });
+      return { type: 'task' as const, id: newTaskId };
+    }
+    return blocker;
+  }));
+}
 
 const blockersEqual = (a: Doc<'tasks'>['blockers'][0], b: Doc<'tasks'>['blockers'][0]) => {
   switch (a.type) {
