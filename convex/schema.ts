@@ -25,6 +25,7 @@ export default defineSchema({
     blockers: v.array(vBlocker),
     project: v.id('projects'),
     tags: v.optional(v.array(v.string())),
+    blockedUntilMillis: v.optional(v.number()),
   })
     .index('owner', ['owner'])
   ,
