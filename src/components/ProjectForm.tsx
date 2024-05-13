@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Doc } from "../../convex/_generated/dataModel";
-import { useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
+import { randomProjectColor, useLoudRequestStatus, useParsed, watchReqStatus } from "../common";
 import { Button, FormControl, Input, InputLabel, Stack, TextField } from "@mui/material";
 import { Set } from "immutable";
 
@@ -17,7 +17,7 @@ export function ProjectForm({ init, forbidNames, onArchive, onSubmit }: {
         return { type: 'ok', value: name }
     }, [forbidNames]));
 
-    const [color, colorF, setColorF] = useParsed(init?.color ?? '', useCallback(colorF => ({ type: 'ok', value: colorF }), []));
+    const [color, colorF, setColorF] = useParsed(init?.color ?? randomProjectColor(), useCallback(colorF => ({ type: 'ok', value: colorF }), []));
 
     const [req, setReq] = useLoudRequestStatus();
 
