@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { ReqStatus, must, useMiscProject, useParsed, watchReqStatus } from "../common";
 import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
-import { List, Map, Set } from "immutable";
+import { List, Map } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
 import { TagAutocomplete } from "./TagAutocomplete";
 

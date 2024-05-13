@@ -119,16 +119,23 @@ export function must<T>(x: T | undefined, msg: string): T {
     return x;
 }
 
-export function mapundef<T, U>(x: T | undefined, f: (x: T) => U): U | undefined {
-    return x === undefined ? undefined : f(x);
-}
-
 export function byUniqueKey<T, K>(items: List<T>, key: (item: T) => K): Map<K, T> {
     let map = Map<K, T>();
     items.forEach((item) => {
         map = map.set(key(item), item);
     });
     return map;
+}
+
+export function useListify<T>(xs: T[] | undefined): List<T> | undefined {
+    return useMemo(() => xs === undefined ? undefined : List(xs), [xs]);
+}
+
+export function useMapify<T, Field extends keyof T>(xs: T[] | undefined, field: Field): typeof xs extends undefined ? undefined : Map<T[Field], T> {
+    return useMemo(
+        () => ((xs === undefined ? undefined : Map(xs.map(x => [x[field], x]))) as typeof xs extends undefined ? undefined : Map<T[Field], T>),
+        [xs, field],
+    );
 }
 
 export function listcmp<T>(a: T[], b: T[]): number {

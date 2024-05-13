@@ -2,11 +2,11 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map, Set } from "immutable";
-import { must, textMatches, useNow } from "../common";
+import { useListify, must, textMatches, useNow } from "../common";
 import { Inbox } from "../components/Inbox";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
-import { mapundef, byUniqueKey } from "../common";
+import { byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { QuickCaptureForm } from "../components/QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
@@ -27,14 +27,10 @@ const initialProjectBlock = (): ProjectBlocks => ({
 
 
 export function Page() {
-    const rawProjects = useQuery(api.projects.list);
-    const projects = useMemo(() => rawProjects && List(rawProjects), [rawProjects]);
-
-    const rawTasks = useQuery(api.tasks.list);
-    const tasks = useMemo(() => rawTasks && List(rawTasks), [rawTasks]);
-
-    const rawBlockers = useQuery(api.delegations.list);
-    const blockers = useMemo(() => rawBlockers && List(rawBlockers), [rawBlockers]);
+    const projects = useListify(useQuery(api.projects.list));
+    const tasks = useListify(useQuery(api.tasks.list));
+    const blockers = useListify(useQuery(api.delegations.list));
+    const captures = useListify(useQuery(api.captures.list, { limit: 10 }));
 
     const createProject = useMutation(api.projects.create);
 
@@ -106,8 +102,6 @@ export function Page() {
         window.addEventListener('keydown', handleKeyDown);
         return () => { window.removeEventListener('keydown', handleKeyDown) };
     }, []);
-
-    const captures = mapundef(useQuery(api.captures.list, { limit: 10 }), List);
 
     return <Stack direction="column">
         <Button variant="contained" sx={{ mx: 'auto', width: '10em' }} onClick={() => { setShowQuickCapture(true) }}>

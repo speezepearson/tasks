@@ -1,15 +1,14 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Map } from "immutable";
 import { Tabs, Tab, Box } from "@mui/material";
 import { TaskForm } from "./TaskForm";
 import { DelegationForm } from "./DelegationForm";
 import { CaptureForm } from "./CaptureForm";
+import { useMapify } from "../common";
 
 export function QuickCaptureForm() {
-    const rawProjects = useQuery(api.projects.list);
-    const projectsById = useMemo(() => Map(rawProjects?.map(p => [p._id, p])), [rawProjects]);
+    const projectsById = useMapify(useQuery(api.projects.list), '_id');
 
     const createCapture = useMutation(api.captures.create);
     const createTask = useMutation(api.tasks.create);
