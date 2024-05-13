@@ -135,17 +135,6 @@ export const linkBlocker = mutationWithUser({
           }
         })();
         break;
-      case 'delegation':
-        await (async () => {
-          const b = await getOneFiltered(ctx.db, blocker.id, 'owner', ctx.user._id);
-          if (b === null) {
-            throw new Error('Blocker delegation does not exist');
-          }
-          if (b.project !== task.project) {
-            throw new Error('Blocker task is in a different project');
-          }
-        })();
-        break;
     }
     await ctx.db.patch(id, { blockers: [...task.blockers, blocker] });
   },
@@ -163,10 +152,5 @@ const blockersEqual = (a: Doc<'tasks'>['blockers'][0], b: Doc<'tasks'>['blockers
         return false;
       }
       return a.millis === b.millis;
-    case 'delegation':
-      if (a.type !== b.type) {
-        return false;
-      }
-      return a.id === b.id;
   }
 }

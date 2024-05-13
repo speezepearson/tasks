@@ -123,8 +123,6 @@ export function Task({ task, projectsById, tasksById }: {
                                     {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
                                 </Box>;
-                            case "delegation":
-                                throw new Error("delegations should not be blockers anymore");
                         }
                     })}
                 </Box>

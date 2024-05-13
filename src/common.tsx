@@ -107,8 +107,6 @@ export function getOutstandingBlockers({ task, tasksById, now }: {
                 return must(tasksById.get(blocker.id), "blocker references nonexistent task").completedAtMillis === undefined;
             case "time":
                 return blocker.millis > now.getTime();
-            case "delegation":
-                throw new Error("delegations should not be blockers anymore");
         }
     }));
 }

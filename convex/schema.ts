@@ -5,7 +5,6 @@ import { migrationsTable } from "convex-helpers/server/migrations";
 export const vBlocker = v.union(
   v.object({ type: v.literal('task'), id: v.id('tasks') }),
   v.object({ type: v.literal('time'), millis: v.number() }),
-  v.object({ type: v.literal('delegation'), id: v.id('delegations') }),
 );
 
 export default defineSchema({
@@ -19,14 +18,6 @@ export default defineSchema({
     .index('owner_name', ['owner', 'name'])
   ,
 
-  captures: defineTable({
-    owner: v.id('users'),
-    text: v.string(),
-    archivedAtMillis: v.optional(v.number()),
-  })
-    .index('owner_archivedAtMillis', ['owner', 'archivedAtMillis'])
-  ,
-
   tasks: defineTable({
     owner: v.id('users'),
     text: v.string(),
@@ -34,16 +25,6 @@ export default defineSchema({
     blockers: v.array(vBlocker),
     project: v.id('projects'),
     tags: v.optional(v.array(v.string())),
-  })
-    .index('owner', ['owner'])
-  ,
-
-  delegations: defineTable({
-    owner: v.id('users'),
-    text: v.string(),
-    timeoutMillis: v.number(),
-    completedAtMillis: v.optional(v.number()),
-    project: v.id('projects'),
   })
     .index('owner', ['owner'])
   ,
