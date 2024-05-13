@@ -55,10 +55,11 @@ export const update = mutationWithUser({
     id: v.id("tasks"),
     text: v.optional(v.string()),
     project: v.optional(v.id('projects')),
+    blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
     addTags: v.optional(v.array(v.string())),
     delTags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { id, text, project, addTags, delTags }) => {
+  handler: async (ctx, { id, text, project, blockedUntilMillis, addTags, delTags }) => {
     const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
     if (task === null) {
       throw new Error('not found');
@@ -74,10 +75,11 @@ export const update = mutationWithUser({
       }
       return Set(task.tags).union(add).subtract(del).toList().sort().toArray();
     })();
-    console.log('updating task', id, { text, project, tags });
+    console.log('updating task', id, { text, project, tags, blockedUntilMillis });
     await ctx.db.patch(id, {
       ...(text !== undefined ? { text } : {}),
       ...(project !== undefined ? { project } : {}),
+      ...(blockedUntilMillis !== undefined ? { blockedUntilMillis: blockedUntilMillis.new } : {}),
       ...(tags !== undefined ? { tags } : {}),
     });
   },
@@ -143,14 +145,10 @@ export const linkBlocker = mutationWithUser({
 const blockersEqual = (a: Doc<'tasks'>['blockers'][0], b: Doc<'tasks'>['blockers'][0]) => {
   switch (a.type) {
     case 'task':
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (a.type !== b.type) {
         return false;
       }
       return a.id === b.id;
-    case 'time':
-      if (a.type !== b.type) {
-        return false;
-      }
-      return a.millis === b.millis;
   }
 }

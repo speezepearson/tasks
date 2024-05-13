@@ -1,20 +1,22 @@
 import { useCallback, useMemo, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, useParsed, watchReqStatus } from "../common";
+import { ReqStatus, must, parseISOMillis, useNow, useParsed, watchReqStatus } from "../common";
 import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
 import { List, Map } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
 import { TagAutocomplete } from "./TagAutocomplete";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { addDays, formatDate } from "date-fns";
 
 export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     init?: Doc<'tasks'>;
     initProject?: Doc<'projects'>;
     projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
-    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags'>) => Promise<unknown>;
+    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags' | 'blockedUntilMillis'>) => Promise<unknown>;
 }) {
     const inbox = useQuery(api.projects.getInbox);
+    const now = useNow();
 
     initProject = useMemo(() => {
         if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
@@ -32,6 +34,14 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
             : { type: 'ok', value: textF };
     }, []));
 
+    const [blockedUntilMillis, blockedUntilF, setBlockedUntilF] = useParsed(formatDate(init?.blockedUntilMillis ?? addDays(now, 1), 'yyyy-MM-dd'), useCallback(blockedUntilF => {
+        const millis = parseISOMillis(blockedUntilF);
+        // don't check whether it's in the future, because we're editing an existing delegation, which might have already timed out
+        return millis === undefined
+            ? { type: 'ok', value: undefined }
+            : { type: 'ok', value: millis };
+    }, []));
+
     const [tags, setTags] = useState(List(init?.tags ?? []))
 
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
@@ -39,18 +49,25 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     const canSubmit = req.type !== 'working'
         && project !== undefined
         && text.type === 'ok'
+        && blockedUntilMillis.type === 'ok'
         && projectFieldValid;
 
     const submit = useCallback(() => {
         if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id, tags: List(tags).sort().toArray() }).then(() => {
+        watchReqStatus(setReq, onSubmit({
+            text: text.value,
+            project: project._id,
+            tags: List(tags).sort().toArray(),
+            blockedUntilMillis: blockedUntilMillis.value,
+        }).then(() => {
             if (!init) {
                 setTextF("");
                 setProject(initProject);
+                setBlockedUntilF(formatDate(addDays(now, 1), 'yyyy-MM-dd'));
                 setTags(List());
             }
         }));
-    }, [canSubmit, text, project, tags, onSubmit, init, initProject, setTextF]);
+    }, [canSubmit, text, project, tags, onSubmit, init, initProject, setTextF, blockedUntilMillis, now, setBlockedUntilF]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -83,6 +100,16 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 onValid={setProjectFieldValid}
                 disabled={req.type === 'working'}
             />}
+
+            <TextField
+                label="Blocked until"
+                error={blockedUntilMillis.type === 'err'}
+                fullWidth
+                type="date"
+                value={blockedUntilF}
+                onChange={(e) => { setBlockedUntilF(e.target.value) }}
+                disabled={req.type === 'working'}
+            />
 
             <TagAutocomplete
                 value={tags}

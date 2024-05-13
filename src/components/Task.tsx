@@ -27,20 +27,21 @@ export function Task({ task, projectsById, tasksById }: {
     const now = useNow();
     const [req, setReq] = useLoudRequestStatus();
 
-    const outstandingBlockers = getOutstandingBlockers({ task, tasksById, now });
-    const blocked = outstandingBlockers.size > 0;
+    const outstandingBlockers = getOutstandingBlockers({ task, tasksById });
+    const blocked = outstandingBlockers.size > 0 || (task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime());
     return <Box>
         {editing && <Dialog open onClose={() => { setEditing(false) }} fullWidth>
             <DialogTitle>Edit task</DialogTitle>
             <DialogContent>
                 <TaskForm
                     init={task}
-                    onSubmit={async ({ text, project, tags }) => {
-                        console.log('updating task', { text, project, tags });
+                    onSubmit={async ({ text, project, tags, blockedUntilMillis }) => {
+                        console.log('updating task', { text, project, tags, blockedUntilMillis });
                         await updateTask({
                             id: task._id,
                             text,
                             project,
+                            blockedUntilMillis: { new: blockedUntilMillis },
                             addTags: Set(tags).subtract(Set(task.tags)).toArray(),
                             delTags: Set(task.tags).subtract(Set(tags)).toArray(),
                         });
@@ -101,8 +102,18 @@ export function Task({ task, projectsById, tasksById }: {
         </Stack>
         {blocked
             && <Box sx={{ ml: 4 }}>
-                blocked on:
+                Blocked:
                 <Box sx={{ ml: 2 }}>
+                    {task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime() && <Box>
+                        until: {formatDate(task.blockedUntilMillis, 'yyyy-MM-dd HH:mm')}
+                        {" "}
+                        <Button
+                            variant="outlined"
+                            onClick={() => { watchReqStatus(setReq, updateTask({ id: task._id, blockedUntilMillis: { new: undefined } })) }}
+                        >
+                            Clear
+                        </Button>
+                    </Box>}
                     {outstandingBlockers.map((blocker) => {
                         const unlinkButton = <Button
                             variant="outlined"
@@ -113,14 +124,10 @@ export function Task({ task, projectsById, tasksById }: {
                         switch (blocker.type) {
                             case "task":
                                 return <Box key={blocker.id}>
+                                    on:{" "}
                                     <SingleLineMarkdown>
                                         {must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}
                                     </SingleLineMarkdown>
-                                    {" "} {unlinkButton}
-                                </Box>;
-                            case "time":
-                                return <Box key={`__time-${blocker.millis}`}>
-                                    {formatDate(blocker.millis, 'yyyy-MM-dd')}
                                     {" "} {unlinkButton}
                                 </Box>;
                         }

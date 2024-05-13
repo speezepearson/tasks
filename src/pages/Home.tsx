@@ -42,9 +42,9 @@ export function Page() {
     const outstandingBlockers = useMemo(() => {
         return tasksById && tasks && Map(
             tasks
-                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById, now })])
+                .map((task) => [task._id, getOutstandingBlockers({ task, tasksById })])
         );
-    }, [tasks, tasksById, now]);
+    }, [tasks, tasksById]);
 
     const projectBlocks: undefined | Map<Doc<'projects'>, ProjectBlocks> = useMemo(() => {
         if (projects === undefined || outstandingBlockers === undefined || tasks === undefined || projectsById === undefined) return undefined;
@@ -55,6 +55,8 @@ export function Page() {
                 return [t, 'historic'];
             if (!outstandingBlockers.get(t._id, List()).isEmpty())
                 return [t, 'blocked'];
+            if (t.blockedUntilMillis !== undefined && t.blockedUntilMillis > now.getTime())
+                return [t, 'blocked'];
             return [t, 'actionable'];
         }));
 
@@ -63,7 +65,7 @@ export function Page() {
             must(projectsById.get(t.project), "task references nonexistent project"),
             initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], tasks: pb[bin].tasks.push(t) } })));
         return res;
-    }, [tasks, outstandingBlockers, projects, projectsById]);
+    }, [tasks, outstandingBlockers, projects, projectsById, now]);
 
     const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
     const [nextActionFilterF, setNextActionFilterF] = useState("");

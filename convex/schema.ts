@@ -2,10 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { migrationsTable } from "convex-helpers/server/migrations";
 
-export const vBlocker = v.union(
-  v.object({ type: v.literal('task'), id: v.id('tasks') }),
-  v.object({ type: v.literal('time'), millis: v.number() }),
-);
+export const vBlocker = v.object({ type: v.literal('task'), id: v.id('tasks') });
 
 export default defineSchema({
   projects: defineTable({

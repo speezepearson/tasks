@@ -96,17 +96,14 @@ export function guessTimeoutMillisFromText(text: string): { withoutDate: string;
     };
 }
 
-export function getOutstandingBlockers({ task, tasksById, now }: {
+export function getOutstandingBlockers({ task, tasksById }: {
     task: Doc<'tasks'>;
     tasksById: Map<Id<'tasks'>, Doc<'tasks'>>;
-    now: Date;
 }): List<Doc<'tasks'>['blockers'][0]> {
     return List(task.blockers.filter((blocker) => {
         switch (blocker.type) {
             case "task":
                 return must(tasksById.get(blocker.id), "blocker references nonexistent task").completedAtMillis === undefined;
-            case "time":
-                return blocker.millis > now.getTime();
         }
     }));
 }
