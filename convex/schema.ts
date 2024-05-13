@@ -21,7 +21,7 @@ export default defineSchema({
     completedAtMillis: v.optional(v.number()),
     blockers: v.array(vBlocker),
     project: v.id('projects'),
-    tags: v.optional(v.array(v.string())),
+    tags: v.array(v.string()),
     blockedUntilMillis: v.optional(v.number()),
   })
     .index('owner_project', ['owner', 'project'])
@@ -30,7 +30,6 @@ export default defineSchema({
   users: defineTable({
     email: v.string(),
     tokenIdentifier: v.string(),
-    miscProject: v.optional(v.id('projects')),
   })
     .index('tokenIdentifier', ['tokenIdentifier'])
     .index('email', ['email'])

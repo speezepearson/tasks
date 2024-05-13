@@ -129,7 +129,7 @@ export function Page() {
                         .sortBy(([p]) => [p.name !== 'Inbox', p.name], listcmp)
                         .map(([project, block]) => {
                             const projectTasks = block.actionable.tasks.filter(t => textMatches(
-                                [t.text, ...t.tags?.map(tag => `@${tag}`) ?? []].join(" "),
+                                [t.text, ...t.tags.map(tag => `@${tag}`)].join(" "),
                                 nextActionFilterF));
                             if (projectTasks.isEmpty()) return null;
                             return <ProjectCard

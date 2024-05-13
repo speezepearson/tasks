@@ -70,7 +70,7 @@ export function Task({ task, projectsById, tasksById }: {
 
                     <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
                 </Typography>
-                {task.tags?.map((tag =>
+                {task.tags.map((tag =>
                     <Chip
                         key={tag}
                         label={<>
