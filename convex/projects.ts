@@ -55,6 +55,28 @@ export const get = queryWithUser({
   },
 });
 
+export const getInbox = queryWithUser({
+  args: {},
+  handler: async (ctx) => {
+    const res = await ctx.db.query("projects").withIndex('owner_name', q => q.eq('owner', ctx.user._id).eq('name', 'Inbox')).unique();
+    if (res === null) {
+      throw new Error('not found');
+    }
+    return res;
+  },
+});
+
+export const getMisc = queryWithUser({
+  args: {},
+  handler: async (ctx) => {
+    const res = await ctx.db.query("projects").withIndex('owner_name', q => q.eq('owner', ctx.user._id).eq('name', 'Misc')).unique();
+    if (res === null) {
+      throw new Error('not found');
+    }
+    return res;
+  },
+});
+
 export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {

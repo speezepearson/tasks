@@ -31,3 +31,24 @@ export const createExplicitMiscProjects = migration({
         await ctx.db.patch(doc._id, { miscProject });
     },
 });
+
+export const createInboxProjects = migration({
+    table: "users",
+    migrateOne: async (ctx, doc) => {
+        const inboxProject = await (async () => {
+            const existing = await ctx.db.query("projects").withIndex('owner_name', q => q.eq('owner', doc._id).eq('name', 'Inbox')).collect();
+            if (existing.length > 0) {
+                return existing[0]._id;
+            }
+            return await ctx.db.insert("projects", { owner: doc._id, name: "Inbox" });
+        })()
+        const captures = await ctx.db.query("captures")
+            .withIndex('owner_archivedAtMillis', q => q.eq('owner', doc._id))
+            .collect();
+        console.log(`patching ${captures.length} captures to point at ${inboxProject} for user ${doc._id}`)
+        await Promise.all(captures.map(async (c) => {
+            await ctx.db.insert("tasks", { owner: doc._id, text: c.text, project: inboxProject, blockers: [] });
+            await ctx.db.patch(c._id, { archivedAtMillis: new Date().getTime() });
+        }));
+    },
+});

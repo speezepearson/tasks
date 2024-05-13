@@ -1,22 +1,28 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, useMiscProject, useParsed, watchReqStatus } from "../common";
+import { ReqStatus, must, useParsed, watchReqStatus } from "../common";
 import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
 import { List, Map } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
 import { TagAutocomplete } from "./TagAutocomplete";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     init?: Doc<'tasks'>;
     initProject?: Doc<'projects'>;
-    projectsById: Map<Id<'projects'>, Doc<'projects'>>;
+    projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
     onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags'>) => Promise<unknown>;
 }) {
+    const inbox = useQuery(api.projects.getInbox);
 
-    const miscProject = useMiscProject(projectsById);
-    const [project, setProject] = useState(initProject ?? (init?.project
-        ? must(projectsById.get(init.project), "task's project does not actually exist")
-        : miscProject));
+    initProject = useMemo(() => {
+        if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
+        if (initProject) return initProject;
+        return inbox;
+    }, [inbox, init, initProject, projectsById]);
+
+    const [project, setProject] = useState(initProject);
     const [projectFieldValid, setProjectFieldValid] = useState(true);
 
     const [text, textF, setTextF] = useParsed(init?.text ?? "", useCallback(textF => {
@@ -31,6 +37,7 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
 
     const canSubmit = req.type !== 'working'
+        && project !== undefined
         && text.type === 'ok'
         && projectFieldValid;
 
@@ -39,11 +46,11 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
         watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id, tags: List(tags).sort().toArray() }).then(() => {
             if (!init) {
                 setTextF("");
-                setProject(initProject ?? miscProject);
+                setProject(initProject);
                 setTags(List());
             }
         }));
-    }, [canSubmit, text, project, tags, onSubmit, init, initProject, miscProject, setTextF]);
+    }, [canSubmit, text, project, tags, onSubmit, init, initProject, setTextF]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -69,13 +76,13 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 <FormHelperText>You can use markdown here.</FormHelperText>
             </FormControl>
 
-            <ProjectAutocomplete
+            {projectsById !== undefined && project !== undefined && <ProjectAutocomplete
                 value={project}
                 projectsById={projectsById}
                 onChange={setProject}
                 onValid={setProjectFieldValid}
                 disabled={req.type === 'working'}
-            />
+            />}
 
             <TagAutocomplete
                 value={tags}

@@ -27,6 +27,9 @@ const initialProjectBlock = (): ProjectBlocks => ({
 
 
 export function Page() {
+    // prefetch important queries
+    useQuery(api.projects.getInbox);
+
     const projects = useListify(useQuery(api.projects.list));
     const tasks = useListify(useQuery(api.tasks.list));
     const blockers = useListify(useQuery(api.delegations.list));

@@ -47,6 +47,7 @@ export function ProjectAutocomplete({ projectsById, value, onChange, onValid, di
         inputValue={inputValue}
         onInputChange={(_, newInputValue) => { setInputValue(newInputValue) }}
 
+        isOptionEqualToValue={(option, value) => option._id === value._id}
         renderInput={(params) => <TextField {...params} label="Project" error={!curProject} />}
         renderOption={(props, option) => <li {...props}>{option.name}</li>}
         getOptionLabel={(project) => typeof project === 'string' ? project : project.name}
