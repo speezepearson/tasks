@@ -1,16 +1,16 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map } from "immutable";
-import { Doc, Id } from "../../convex/_generated/dataModel";
 import { Tabs, Tab, Box } from "@mui/material";
 import { TaskForm } from "./TaskForm";
 import { DelegationForm } from "./DelegationForm";
 import { CaptureForm } from "./CaptureForm";
 
-export function QuickCaptureForm({ projectsById }: {
-    projectsById: Map<Id<'projects'>, Doc<'projects'>>,
-}) {
+export function QuickCaptureForm() {
+    const rawProjects = useQuery(api.projects.list);
+    const projectsById = useMemo(() => Map(rawProjects?.map(p => [p._id, p])), [rawProjects]);
+
     const createCapture = useMutation(api.captures.create);
     const createTask = useMutation(api.tasks.create);
     const createDelegation = useMutation(api.delegations.create);

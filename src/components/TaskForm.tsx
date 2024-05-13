@@ -1,15 +1,16 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { ReqStatus, must, useMiscProject, useParsed, watchReqStatus } from "../common";
 import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
-import { Map } from "immutable";
+import { List, Map, Set } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
+import { TagAutocomplete } from "./TagAutocomplete";
 
 export function TaskForm({ init, initProject, projectsById, onSubmit }: {
     init?: Doc<'tasks'>;
     initProject?: Doc<'projects'>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
-    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project'>) => Promise<unknown>;
+    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags'>) => Promise<unknown>;
 }) {
 
     const miscProject = useMiscProject(projectsById);
@@ -25,6 +26,9 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
             : { type: 'ok', value: textF };
     }, []));
 
+    const [tags, setTags] = useState(List(init?.tags ?? []))
+    useEffect(() => console.log(tags.toJS()), [tags])
+
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
 
     const canSubmit = req.type !== 'working'
@@ -33,8 +37,8 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
 
     const submit = useCallback(() => {
         if (!canSubmit) return;
-        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id }));
-    }, [canSubmit, text, project, onSubmit]);
+        watchReqStatus(setReq, onSubmit({ text: text.value, project: project._id, tags: List(tags).sort().toArray() }));
+    }, [canSubmit, text, project, tags, onSubmit]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -65,6 +69,11 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 projectsById={projectsById}
                 onChange={setProject}
                 onValid={setProjectFieldValid}
+            />
+
+            <TagAutocomplete
+                value={tags}
+                onChange={setTags}
             />
 
             <Box sx={{ ml: 'auto' }}><Button sx={{ mt: 2, py: 1 }} variant="contained"

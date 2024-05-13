@@ -71,9 +71,8 @@ export function ProjectCard({
                     init={undefined}
                     initProject={project}
                     projectsById={projectsById}
-                    onSubmit={async ({ text, project }) => {
-                        console.log('creating task', text, project);
-                        await createTask({ text, project });
+                    onSubmit={async ({ text, project, tags }) => {
+                        await createTask({ text, project, tags });
                         setShowAddTaskModal(false);
                     }}
                 />

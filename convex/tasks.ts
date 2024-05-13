@@ -4,15 +4,23 @@ import { mutationWithUser, queryWithUser } from "./lib/withUser";
 import { vBlocker } from "./schema";
 import { getManyFrom } from "convex-helpers/server/relationships";
 import { getOneFiltered } from "./lib/helpers";
+import { Set } from "immutable";
 
 export const create = mutationWithUser({
   args: {
     text: v.string(),
     blockers: v.optional(v.array(vBlocker)),
     project: v.id('projects'),
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("tasks", { owner: ctx.user._id, text: args.text, project: args.project, blockers: args.blockers ?? [] });
+    return await ctx.db.insert("tasks", {
+      owner: ctx.user._id,
+      text: args.text,
+      project: args.project,
+      blockers: args.blockers ?? [],
+      tags: args.tags ?? [],
+    });
   },
 });
 
@@ -21,6 +29,17 @@ export const get = queryWithUser({
   handler: async (ctx, args) => {
     const x = await getOneFiltered(ctx.db, args.id, 'owner', ctx.user._id);
     return x;
+  },
+});
+
+export const listTags = queryWithUser({
+  args: {},
+  handler: async (ctx, args) => {
+    const tasks = await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id);
+    const tags = (await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id)).reduce((acc, task) => {
+      return acc.union(Set(task.tags));
+    }, Set<string>());
+    return tags.toList().sort().toArray();
   },
 });
 
@@ -34,14 +53,33 @@ export const list = queryWithUser({
 export const update = mutationWithUser({
   args: {
     id: v.id("tasks"),
-    text: v.string(),
+    text: v.optional(v.string()),
     project: v.optional(v.id('projects')),
+    addTags: v.optional(v.array(v.string())),
+    delTags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { id, text, project }) => {
-    if (await getOneFiltered(ctx.db, id, 'owner', ctx.user._id) === null) {
+  handler: async (ctx, { id, text, project, addTags, delTags }) => {
+    const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
+    if (task === null) {
       throw new Error('not found');
     }
-    await ctx.db.patch(id, { text, project });
+    const tags = (() => {
+      if (addTags === undefined && delTags === undefined) {
+        return undefined;
+      }
+      const add = Set(addTags ?? []);
+      const del = Set(delTags ?? []);
+      if (add.intersect(del).size > 0) {
+        throw new Error('tags to add and delete overlap');
+      }
+      return Set(task.tags).union(add).subtract(del).toList().sort().toArray();
+    })();
+    console.log('updating task', id, { text, project, tags });
+    await ctx.db.patch(id, {
+      ...(text !== undefined ? { text } : {}),
+      ...(project !== undefined ? { project } : {}),
+      ...(tags !== undefined ? { tags } : {}),
+    });
   },
 });
 

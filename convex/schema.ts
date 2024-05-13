@@ -33,6 +33,7 @@ export default defineSchema({
     completedAtMillis: v.optional(v.number()),
     blockers: v.array(vBlocker),
     project: v.id('projects'),
+    tags: v.optional(v.array(v.string())),
   })
     .index('owner', ['owner'])
   ,

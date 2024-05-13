@@ -116,7 +116,7 @@ export function Page() {
         {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }} PaperProps={{ sx: { position: 'absolute', top: 0 } }}>
             <DialogTitle>Quick Capture</DialogTitle>
             <DialogContent>
-                <QuickCaptureForm projectsById={projectsById ?? Map()} />
+                <QuickCaptureForm />
             </DialogContent>
             <DialogActions>
                 <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>

@@ -1,15 +1,16 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
-import { List, Map } from "immutable";
+import { List, Map, Set } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "./SingleLineMarkdown";
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import { AddBlockerModal } from "./AddBlockerModal";
 import { getOutstandingBlockers } from "../common";
 import { TaskForm } from "./TaskForm";
+import ClearIcon from "@mui/icons-material/Clear";
 
 export function Task({ task, projectsById, tasksById, delegationsById }: {
     task: Doc<'tasks'>;
@@ -36,8 +37,15 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
             <DialogContent>
                 <TaskForm
                     init={task}
-                    onSubmit={async ({ text, project }) => {
-                        await updateTask({ id: task._id, text, project });
+                    onSubmit={async ({ text, project, tags }) => {
+                        console.log('updating task', { text, project, tags });
+                        await updateTask({
+                            id: task._id,
+                            text,
+                            project,
+                            addTags: Set(tags).subtract(Set(task.tags)).toArray(),
+                            delTags: Set(task.tags).subtract(Set(tags)).toArray(),
+                        });
                         setEditing(false);
                     }}
                     projectsById={projectsById}
@@ -59,12 +67,31 @@ export function Task({ task, projectsById, tasksById, delegationsById }: {
                 }}
                 disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
             {" "}
-            <Typography sx={{ mx: 1, flexGrow: 1, color: blocked ? 'gray' : 'inherit' }}
-                role="button"
-                onClick={() => { setEditing(true); }}
-            >
-                <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
-            </Typography>
+            <Box sx={{ mx: 1, flexGrow: 1 }} role="button" onClick={() => { setEditing(true); }}>
+                <Typography sx={{ color: blocked ? 'gray' : 'inherit', display: 'inline-block', mr: 1 }}>
+
+                    <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
+                </Typography>
+                {task.tags?.map((tag =>
+                    <Chip
+                        key={tag}
+                        label={<>
+                            {tag}
+                            <Box display="inline-block" role="button" sx={{ cursor: 'pointer' }} onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (req.type === 'working') return;
+                                watchReqStatus(setReq, updateTask({
+                                    id: task._id,
+                                    delTags: [tag],
+                                }));
+                            }}>
+                                <ClearIcon sx={{ ml: 0.3, fontSize: 10 }} />
+                            </Box>
+                        </>}
+                        size="small"
+                    />))}
+            </Box>
             {showBlockerModal && <AddBlockerModal
                 onHide={() => { setShowBlockerModal(false); }}
                 task={task}
