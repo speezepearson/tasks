@@ -9,6 +9,7 @@ import { Set } from "immutable";
 export const create = mutationWithUser({
   args: {
     text: v.string(),
+    blockedUntilMillis: v.optional(v.number()),
     blockers: v.optional(v.array(vBlocker)),
     project: v.id('projects'),
     tags: v.optional(v.array(v.string())),
@@ -18,6 +19,7 @@ export const create = mutationWithUser({
       owner: ctx.user._id,
       text: args.text,
       project: args.project,
+      blockedUntilMillis: args.blockedUntilMillis,
       blockers: args.blockers ?? [],
       tags: args.tags ?? [],
     });
@@ -35,7 +37,7 @@ export const get = queryWithUser({
 export const listTags = queryWithUser({
   args: {},
   handler: async (ctx) => {
-    const tasks = await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id);
+    const tasks = await getManyFrom(ctx.db, "tasks", "owner_project", ctx.user._id, 'owner');
     const tags = tasks.reduce((acc, task) => {
       return acc.union(Set(task.tags));
     }, Set<string>());
@@ -46,7 +48,14 @@ export const listTags = queryWithUser({
 export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
-    return await getManyFrom(ctx.db, "tasks", "owner", ctx.user._id);
+    return await getManyFrom(ctx.db, "tasks", "owner_project", ctx.user._id, 'owner');
+  },
+});
+
+export const listProject = queryWithUser({
+  args: { project: v.id('projects') },
+  handler: async (ctx, args) => {
+    return await ctx.db.query('tasks').withIndex('owner_project', q => q.eq('owner', ctx.user._id).eq('project', args.project)).collect();
   },
 });
 
@@ -56,10 +65,11 @@ export const update = mutationWithUser({
     text: v.optional(v.string()),
     project: v.optional(v.id('projects')),
     blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
+    blockers: v.optional(v.array(vBlocker)),
     addTags: v.optional(v.array(v.string())),
     delTags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { id, text, project, blockedUntilMillis, addTags, delTags }) => {
+  handler: async (ctx, { id, text, project, blockedUntilMillis, blockers, addTags, delTags }) => {
     const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
     if (task === null) {
       throw new Error('not found');
@@ -80,6 +90,7 @@ export const update = mutationWithUser({
       ...(text !== undefined ? { text } : {}),
       ...(project !== undefined ? { project } : {}),
       ...(blockedUntilMillis !== undefined ? { blockedUntilMillis: blockedUntilMillis.new } : {}),
+      ...(blockers !== undefined ? { blockers } : {}),
       ...(tags !== undefined ? { tags } : {}),
     });
   },

@@ -24,7 +24,7 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     blockedUntilMillis: v.optional(v.number()),
   })
-    .index('owner', ['owner'])
+    .index('owner_project', ['owner', 'project'])
   ,
 
   users: defineTable({

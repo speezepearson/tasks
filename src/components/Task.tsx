@@ -1,13 +1,12 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
-import { List, Map, Set } from "immutable";
+import { Map, Set } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { SingleLineMarkdown } from "./SingleLineMarkdown";
 import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
-import { AddBlockerModal } from "./AddBlockerModal";
 import { getOutstandingBlockers } from "../common";
 import { TaskForm } from "./TaskForm";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -22,7 +21,6 @@ export function Task({ task, projectsById, tasksById }: {
     const setCompleted = useMutation(api.tasks.setCompleted);
 
     const [editing, setEditing] = useState(false);
-    const [showBlockerModal, setShowBlockerModal] = useState(false);
 
     const now = useNow();
     const [req, setReq] = useLoudRequestStatus();
@@ -35,13 +33,14 @@ export function Task({ task, projectsById, tasksById }: {
             <DialogContent>
                 <TaskForm
                     init={task}
-                    onSubmit={async ({ text, project, tags, blockedUntilMillis }) => {
-                        console.log('updating task', { text, project, tags, blockedUntilMillis });
+                    onSubmit={async ({ text, project, tags, blockedUntilMillis, blockers }) => {
+                        console.log('updating task', { text, project, tags, blockedUntilMillis, blockers });
                         await updateTask({
                             id: task._id,
                             text,
                             project,
                             blockedUntilMillis: { new: blockedUntilMillis },
+                            blockers,
                             addTags: Set(tags).subtract(Set(task.tags)).toArray(),
                             delTags: Set(task.tags).subtract(Set(tags)).toArray(),
                         });
@@ -91,14 +90,6 @@ export function Task({ task, projectsById, tasksById }: {
                         size="small"
                     />))}
             </Box>
-            {showBlockerModal && <AddBlockerModal
-                onHide={() => { setShowBlockerModal(false); }}
-                task={task}
-                autocompleteTasks={List(tasksById.values())}
-            />}
-            <Button variant="outlined" onClick={() => { setShowBlockerModal(true); }} sx={{ flexShrink: 0 }}>
-                +blocker
-            </Button>
         </Stack>
         {blocked
             && <Box sx={{ ml: 4 }}>
@@ -124,7 +115,7 @@ export function Task({ task, projectsById, tasksById }: {
                         switch (blocker.type) {
                             case "task":
                                 return <Box key={blocker.id}>
-                                    on:{" "}
+                                    on task: {" "}
                                     <SingleLineMarkdown>
                                         {must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}
                                     </SingleLineMarkdown>

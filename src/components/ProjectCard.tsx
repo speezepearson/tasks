@@ -68,8 +68,8 @@ export function ProjectCard({
                     init={undefined}
                     initProject={project}
                     projectsById={projectsById}
-                    onSubmit={async ({ text, project, tags }) => {
-                        await createTask({ text, project, tags });
+                    onSubmit={async ({ text, project, tags, blockedUntilMillis, blockers }) => {
+                        await createTask({ text, project, tags, blockedUntilMillis, blockers });
                         setShowAddTaskModal(false);
                     }}
                 />
