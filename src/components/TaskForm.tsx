@@ -18,6 +18,7 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
 }) {
     const inbox = useQuery(api.projects.getInbox);
     const createTask = useMutation(api.tasks.create);
+    const allTasks = useMapify(useQuery(api.tasks.list), '_id');
 
     initProject = useMemo(() => {
         if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
@@ -42,15 +43,9 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
             ? { type: 'ok', value: undefined }
             : { type: 'ok', value: millis };
     }, []));
-    const projectTasks = useMapify(useQuery(api.tasks.listProject, project ? { project: project._id } : 'skip'), '_id');
-    const blockerOptions = useMemo(() => projectTasks?.valueSeq().filter(t => t._id !== init?._id && t.completedAtMillis === undefined).toList(), [projectTasks, init]);
+    const blockerOptions = useMemo(() => allTasks?.valueSeq().filter(t => t.project === initProject?._id && t._id !== init?._id && t.completedAtMillis === undefined).toList(), [allTasks, init, initProject]);
     const [blockers, setBlockers] = useState<List<Doc<'tasks'> | string>>(List());
-    useEffect(() => {
-        if (!blockers.isEmpty()) return;
-        if (init === undefined) return;
-        if (projectTasks === undefined) return;
-        setBlockers(List(init.blockers).map(b => must(projectTasks.get(b.id), 'blocker not found')));
-    }, [init, projectTasks, blockers]);
+    useEffect(() => { init?.blockers && setBlockers(List(init.blockers).map(b => must(allTasks?.get(b.id), 'blocker not found'))) }, [init?.blockers, allTasks]);
 
     const [tags, setTags] = useState(List(init?.tags ?? []))
 
