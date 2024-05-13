@@ -68,11 +68,13 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 projectsById={projectsById}
                 onChange={setProject}
                 onValid={setProjectFieldValid}
+                disabled={req.type === 'working'}
             />
 
             <TagAutocomplete
                 value={tags}
                 onChange={setTags}
+                disabled={req.type === 'working'}
             />
 
             <Box sx={{ ml: 'auto' }}><Button sx={{ mt: 2, py: 1 }} variant="contained"

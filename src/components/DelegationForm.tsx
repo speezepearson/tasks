@@ -67,6 +67,7 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
                     autoFocus
                     type="text"
                     value={textF}
+                    disabled={req.type === 'working'}
                     onChange={(e) => { setTextF(e.target.value); }}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -83,6 +84,7 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
                 projectsById={projectsById}
                 onChange={setProject}
                 onValid={setProjectFieldValid}
+                disabled={req.type === 'working'}
             />
 
             <TextField
@@ -91,7 +93,9 @@ export function DelegationForm({ init, initProject, projectsById, onSubmit }: {
                 fullWidth
                 type="date"
                 value={timeoutF}
-                onChange={(e) => { setTimeoutF(e.target.value) }} />
+                onChange={(e) => { setTimeoutF(e.target.value) }}
+                disabled={req.type === 'working'}
+            />
 
             <Box sx={{ ml: 'auto' }}><Button variant="contained" type="submit" disabled={!canSubmit} sx={{ py: 1 }}>
                 {req.type === 'working' ? 'Saving...' : 'Save'}

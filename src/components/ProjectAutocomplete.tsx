@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Map } from "immutable";
 import { TextField } from "@mui/material";
 
-export function ProjectAutocomplete({ projectsById, value, onChange, onValid }: {
+export function ProjectAutocomplete({ projectsById, value, onChange, onValid, disabled }: {
     value: Doc<'projects'>;
     projectsById: Map<Id<'projects'>, Doc<'projects'>>;
     onChange: (p: Doc<'projects'>) => void;
     onValid: (valid: boolean) => void;
+    disabled?: boolean;
 }) {
     const [inputValue, setInputValue] = useState(value.name);
 
@@ -34,6 +35,7 @@ export function ProjectAutocomplete({ projectsById, value, onChange, onValid }: 
 
     return <Autocomplete
         options={options}
+        disabled={disabled}
 
         value={lastValidProject}
         onChange={(_, newValue) => {
