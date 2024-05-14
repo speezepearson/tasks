@@ -1,5 +1,5 @@
 import { SignInButton, SignOutButton } from "@clerk/clerk-react";
-import { Box, Button, Container, Stack } from "@mui/material";
+import { Box, Button, Container, Paper, Stack } from "@mui/material";
 import { Link, Outlet } from "react-router-dom";
 import { useStoreUserEffect } from "./useStoreUserEffect";
 
@@ -7,7 +7,7 @@ export function Root() {
     const { isLoading, isAuthenticated } = useStoreUserEffect();
 
     return <Container maxWidth="lg" sx={{ fontFamily: 'Arial' }}>
-        <header>
+        <Paper component="header" sx={{ p: 1, mb: 1 }}>
             <Stack direction="row" alignItems="center">
                 <Box><Link to="/">Home</Link></Box>
                 <Box sx={{ ml: 2 }}><Link to="/add">Quick Capture</Link></Box>
@@ -18,7 +18,7 @@ export function Root() {
                     }
                 </Box>
             </Stack>
-        </header>
+        </Paper>
         <main>
             <Outlet />
         </main>

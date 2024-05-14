@@ -3,7 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map, Set } from "immutable";
 import { useListify, must, textMatches, useNow, listcmp } from "../common";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TextField, Typography } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
 import { byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
@@ -92,131 +92,136 @@ export function Page() {
         return () => { window.removeEventListener('keydown', handleKeyDown) };
     }, []);
 
-    return <Stack direction="column">
-        <Button variant="contained" sx={{ mx: 'auto', width: '10em' }} onClick={() => { setShowQuickCapture(true) }}>
-            <AddIcon />
-        </Button>
-        {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }} PaperProps={{ sx: { position: 'absolute', top: 0 } }}>
-            <DialogTitle>Quick Capture</DialogTitle>
-            <DialogContent>
-                <QuickCaptureForm />
-            </DialogContent>
-            <DialogActions>
-                <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
-            </DialogActions>
-        </Dialog>}
+    return <>
+        <Stack direction="column">
+            {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }} PaperProps={{ sx: { position: 'absolute', top: 0 } }}>
+                <DialogTitle>Quick Capture</DialogTitle>
+                <DialogContent>
+                    <QuickCaptureForm />
+                </DialogContent>
+                <DialogActions>
+                    <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
+                </DialogActions>
+            </Dialog>}
 
-        <Accordion defaultExpanded sx={{ mt: 4 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h4">Next Actions</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-                <TextField
-                    inputRef={nextActionFilterFieldRef}
-                    label="filter"
-                    value={nextActionFilterF}
-                    onChange={(e) => { setNextActionFilterF(e.target.value) }}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { nextActionFilterFieldRef.current?.blur(); } }}
-                    sx={{ maxWidth: '10em' }}
-                />
-                {(projectBlocks === undefined
-                    || projectsById === undefined
-                    || tasksById === undefined
-                )
-                    ? <Box>Loading...</Box>
-                    : projectBlocks
-                        .entrySeq()
-                        .sortBy(([p]) => [p.name !== 'Inbox', p.name], listcmp)
-                        .map(([project, block]) => {
-                            const projectTasks = block.actionable.tasks.filter(t => textMatches(
-                                [t.text, ...t.tags.map(tag => `@${tag}`)].join(" "),
-                                nextActionFilterF));
-                            if (projectTasks.isEmpty()) return null;
-                            return <ProjectCard
-                                key={project._id}
-                                project={project}
-                                projectTasks={projectTasks}
-                                projectsById={projectsById}
-                                tasksById={tasksById}
+            <Accordion defaultExpanded sx={{ mt: 4 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="h4">Next Actions</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <TextField
+                        inputRef={nextActionFilterFieldRef}
+                        label="filter"
+                        value={nextActionFilterF}
+                        onChange={(e) => { setNextActionFilterF(e.target.value) }}
+                        onKeyDown={(e) => { if (e.key === 'Escape') { nextActionFilterFieldRef.current?.blur(); } }}
+                        sx={{ maxWidth: '10em' }}
+                    />
+                    {(projectBlocks === undefined
+                        || projectsById === undefined
+                        || tasksById === undefined
+                    )
+                        ? <Box>Loading...</Box>
+                        : projectBlocks
+                            .entrySeq()
+                            .sortBy(([p]) => [p.name !== 'Inbox', p.name], listcmp)
+                            .map(([project, block]) => {
+                                const projectTasks = block.actionable.tasks.filter(t => textMatches(
+                                    [t.text, ...t.tags.map(tag => `@${tag}`)].join(" "),
+                                    nextActionFilterF));
+                                if (projectTasks.isEmpty()) return null;
+                                return <ProjectCard
+                                    key={project._id}
+                                    project={project}
+                                    projectTasks={projectTasks}
+                                    projectsById={projectsById}
+                                    tasksById={tasksById}
+                                />
+                            })}
+                </AccordionDetails>
+            </Accordion>
+
+            <Accordion sx={{ mt: 4 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="h4">Blocked</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    {(projectBlocks === undefined
+                        || projectsById === undefined
+                        || tasksById === undefined
+                    )
+                        ? <Box>Loading...</Box>
+                        : projectBlocks
+                            .entrySeq()
+                            .sortBy(([p]) => p.name)
+                            .map(([project, block]) => {
+                                const projectTasks = block.blocked.tasks;
+                                if (projectTasks.isEmpty()) return null;
+                                return <ProjectCard
+                                    key={project._id}
+                                    project={project}
+                                    projectTasks={projectTasks}
+                                    projectsById={projectsById}
+                                    tasksById={tasksById}
+                                />
+                            })}
+                </AccordionDetails>
+            </Accordion>
+
+            <Accordion sx={{ mt: 4 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="h4">Archives</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    {showCreateProjectModal && <Dialog open fullWidth
+                        disableRestoreFocus // HACK: required for autofocus: ...
+                        onClose={() => { setShowCreateProjectModal(false) }}
+                    >
+                        <DialogTitle>Edit Project</DialogTitle>
+                        <DialogContent>
+                            <ProjectForm
+                                init={undefined}
+                                forbidNames={projects?.map(p => p.name).toSet() ?? Set()}
+                                onSubmit={async ({ name, color }) => {
+                                    await createProject({ name, color });
+                                    setShowCreateProjectModal(false);
+                                }}
                             />
-                        })}
-            </AccordionDetails>
-        </Accordion>
-
-        <Button variant="contained" sx={{ mx: 'auto' }} onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
-
-        <Accordion sx={{ mt: 4 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h4">Blocked</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-                {(projectBlocks === undefined
-                    || projectsById === undefined
-                    || tasksById === undefined
-                )
-                    ? <Box>Loading...</Box>
-                    : projectBlocks
-                        .entrySeq()
-                        .sortBy(([p]) => p.name)
-                        .map(([project, block]) => {
-                            const projectTasks = block.blocked.tasks;
-                            if (projectTasks.isEmpty()) return null;
-                            return <ProjectCard
-                                key={project._id}
-                                project={project}
-                                projectTasks={projectTasks}
-                                projectsById={projectsById}
-                                tasksById={tasksById}
-                            />
-                        })}
-            </AccordionDetails>
-        </Accordion>
-
-        <Accordion sx={{ mt: 4 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h4">Archives</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-                {showCreateProjectModal && <Dialog open fullWidth
-                    disableRestoreFocus // HACK: required for autofocus: ...
-                    onClose={() => { setShowCreateProjectModal(false) }}
-                >
-                    <DialogTitle>Edit Project</DialogTitle>
-                    <DialogContent>
-                        <ProjectForm
-                            init={undefined}
-                            forbidNames={projects?.map(p => p.name).toSet() ?? Set()}
-                            onSubmit={async ({ name, color }) => {
-                                await createProject({ name, color });
-                                setShowCreateProjectModal(false);
-                            }}
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button variant="outlined" color="secondary" onClick={() => { setShowCreateProjectModal(false) }}>Close</Button>
-                    </DialogActions>
-                </Dialog>}
-                {(projectBlocks === undefined
-                    || projectsById === undefined
-                    || tasksById === undefined
-                )
-                    ? <Box>Loading...</Box>
-                    : projectBlocks
-                        .entrySeq()
-                        .sortBy(([p]) => p.name)
-                        .map(([project, block]) => {
-                            const projectTasks = block.historic.tasks;
-                            if (projectTasks.isEmpty()) return null;
-                            return <ProjectCard
-                                key={project._id}
-                                project={project}
-                                projectTasks={projectTasks}
-                                projectsById={projectsById}
-                                tasksById={tasksById}
-                            />
-                        })}
-            </AccordionDetails>
-        </Accordion>
-    </Stack>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button variant="outlined" color="secondary" onClick={() => { setShowCreateProjectModal(false) }}>Close</Button>
+                        </DialogActions>
+                    </Dialog>}
+                    {(projectBlocks === undefined
+                        || projectsById === undefined
+                        || tasksById === undefined
+                    )
+                        ? <Box>Loading...</Box>
+                        : projectBlocks
+                            .entrySeq()
+                            .sortBy(([p]) => p.name)
+                            .map(([project, block]) => {
+                                const projectTasks = block.historic.tasks;
+                                if (projectTasks.isEmpty()) return null;
+                                return <ProjectCard
+                                    key={project._id}
+                                    project={project}
+                                    projectTasks={projectTasks}
+                                    projectsById={projectsById}
+                                    tasksById={tasksById}
+                                />
+                            })}
+                </AccordionDetails>
+            </Accordion>
+        </Stack>
+        <Paper component="footer" sx={{ position: 'fixed', bottom: 0, right: 0, p: 1 }}>
+            <Stack direction="row" spacing={1}>
+                <Button variant="outlined" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
+                <Button variant="contained" sx={{ width: '10em' }} onClick={() => { setShowQuickCapture(true) }}>
+                    <AddIcon /> (q)
+                </Button>
+            </Stack>
+        </Paper>
+    </>
 }
 
