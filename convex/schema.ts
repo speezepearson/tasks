@@ -18,6 +18,7 @@ export default defineSchema({
   tasks: defineTable({
     owner: v.id('users'),
     text: v.string(),
+    details: v.optional(v.string()),
     completedAtMillis: v.optional(v.number()),
     blockers: v.array(vBlocker),
     project: v.id('projects'),
