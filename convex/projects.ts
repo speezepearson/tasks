@@ -12,7 +12,12 @@ export const create = mutationWithUser({
     if (existingWithName) {
       throw new Error('a project with that name already exists');
     }
-    return await ctx.db.insert("projects", { owner: ctx.user._id, name: args.name, color: args.color });
+    const id = await ctx.db.insert("projects", { owner: ctx.user._id, name: args.name, color: args.color });
+    const res = await ctx.db.get(id);
+    if (res === null) {
+      throw new Error(`internal error: failed to find project ${id} we just wrote`);
+    }
+    return res;
   },
 });
 

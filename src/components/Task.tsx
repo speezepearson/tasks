@@ -5,11 +5,11 @@ import { Map, Set } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
-import { SingleLineMarkdown } from "./SingleLineMarkdown";
-import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
 import { TaskForm } from "./TaskForm";
 import ClearIcon from "@mui/icons-material/Clear";
+import { SingleLineMarkdown } from "./Markdown";
 
 export function Task({ task, projectsById, tasksById }: {
     task: Doc<'tasks'>;
@@ -63,12 +63,10 @@ export function Task({ task, projectsById, tasksById }: {
                     if (req.type === 'working') return;
                     watchReqStatus(setReq, setCompleted({ id: task._id, isCompleted: e.target.checked }));
                 }}
-                disabled={req.type === 'working' || (blocked && task.completedAtMillis === undefined)} />
+                disabled={req.type === 'working'} />
             {" "}
             <Box sx={{ mx: 1, flexGrow: 1 }} role="button" onClick={() => { setEditing(true); }}>
-                <Typography sx={{ color: blocked ? 'gray' : 'inherit', display: 'inline-block', mr: 1 }}>
-                    <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
-                </Typography>
+                <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
                 {task.tags.map((tag =>
                     <Chip
                         key={tag}
@@ -92,37 +90,34 @@ export function Task({ task, projectsById, tasksById }: {
         </Stack>
         {blocked
             && <Box sx={{ ml: 4 }}>
-                Blocked:
-                <Box sx={{ ml: 2 }}>
-                    {task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime() && <Box>
-                        until: {formatDate(task.blockedUntilMillis, 'yyyy-MM-dd HH:mm')}
-                        {" "}
-                        <Button
-                            variant="outlined"
-                            onClick={() => { watchReqStatus(setReq, updateTask({ id: task._id, blockedUntilMillis: { new: undefined } })) }}
-                        >
-                            Clear
-                        </Button>
-                    </Box>}
-                    {outstandingBlockers.map((blocker) => {
-                        const unlinkButton = <Button
-                            variant="outlined"
-                            onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}
-                        >
-                            Unlink
-                        </Button>;
-                        switch (blocker.type) {
-                            case "task":
-                                return <Box key={blocker.id}>
-                                    on task: {" "}
-                                    <SingleLineMarkdown>
-                                        {must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}
-                                    </SingleLineMarkdown>
-                                    {" "} {unlinkButton}
-                                </Box>;
-                        }
-                    })}
-                </Box>
+                {task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime() && <Box>
+                    Blocked until: {formatDate(task.blockedUntilMillis, 'yyyy-MM-dd HH:mm')}
+                    {" "}
+                    <Button
+                        variant="outlined"
+                        onClick={() => { watchReqStatus(setReq, updateTask({ id: task._id, blockedUntilMillis: { new: undefined } })) }}
+                    >
+                        Clear
+                    </Button>
+                </Box>}
+                {outstandingBlockers.map((blocker) => {
+                    const unlinkButton = <Button
+                        variant="outlined"
+                        onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}
+                    >
+                        Unlink
+                    </Button>;
+                    switch (blocker.type) {
+                        case "task":
+                            return <Box key={blocker.id}>
+                                Blocked on task: {" "}
+                                <SingleLineMarkdown>
+                                    {must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}
+                                </SingleLineMarkdown>
+                                {" "} {unlinkButton}
+                            </Box>;
+                    }
+                })}
             </Box>}
     </Box>;
 }

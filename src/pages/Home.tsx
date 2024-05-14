@@ -192,6 +192,8 @@ function Footer() {
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
     const [showQuickCapture, setShowQuickCapture] = useState(false);
 
+    const [recommendedProject, setRecommendedProject] = useState<Doc<'projects'> | undefined>(undefined);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -209,13 +211,16 @@ function Footer() {
     return <Box component="footer" sx={{ position: "fixed", bottom: 0, right: 0, p: 1 }}>
         <Stack direction="row" spacing={1}>
             <Fab onClick={() => { setShowCreateProjectModal(true) }}><AddRoadIcon /></Fab>
-            {showCreateProjectModal && <CreateProjectModal onClose={() => { setShowCreateProjectModal(false) }} />}
+            {showCreateProjectModal && <CreateProjectModal
+                onClose={() => { setShowCreateProjectModal(false) }}
+                onProjectCreated={(p) => { setRecommendedProject(p); setShowCreateProjectModal(false); setShowQuickCapture(true) }}
+            />}
 
             <Fab color="primary" onClick={() => { setShowQuickCapture(true) }}><AddIcon /></Fab>
             {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }} PaperProps={{ sx: { position: 'absolute', top: 0 } }}>
                 <DialogTitle>Quick Capture</DialogTitle>
                 <DialogContent>
-                    <QuickCaptureForm />
+                    <QuickCaptureForm recommendedProject={recommendedProject} />
                 </DialogContent>
                 <DialogActions>
                     <Button variant="outlined" color="secondary" onClick={() => { setShowQuickCapture(false) }}>Close</Button>
@@ -225,7 +230,7 @@ function Footer() {
     </Box>;
 }
 
-function CreateProjectModal({ onClose }: { onClose: () => void }) {
+function CreateProjectModal({ onClose, onProjectCreated }: { onClose: () => void, onProjectCreated: (p: Doc<'projects'>) => void }) {
 
     const { isAuthenticated } = useStoreUserEffect();
     const projects = useListify(useQuery(api.projects.list, isAuthenticated ? {} : 'skip'));
@@ -241,7 +246,8 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
                 init={undefined}
                 forbidNames={projects?.map(p => p.name).toSet() ?? Set()}
                 onSubmit={async ({ name, color }) => {
-                    await createProject({ name, color });
+                    const project = await createProject({ name, color });
+                    onProjectCreated(project);
                     onClose();
                 }}
             />

@@ -4,10 +4,11 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { Autocomplete, TextField, Typography } from "@mui/material";
 
 
-export function BlockerAutocomplete({ value, onChange, options }: {
+export function BlockerAutocomplete({ value, onChange, options, label = 'Blocked on tasks...' }: {
     options: List<Doc<'tasks'>>;
     value: List<Doc<'tasks'> | string>;
     onChange: (value: List<Doc<'tasks'> | string>) => void;
+    label?: string;
 }) {
     const optionsArr = useMemo(() => options.toArray(), [options]);
     const valueArr = useMemo(() => value.toArray(), [value]);
@@ -27,7 +28,7 @@ export function BlockerAutocomplete({ value, onChange, options }: {
             if (typeof option === 'string' || typeof value === 'string') return option === value;
             return option._id === value._id;
         }}
-        renderInput={(params) => <TextField {...params} label="Blocker" sx={{ mt: 1 }} />}
+        renderInput={(params) => <TextField {...params} label={label} sx={{ mt: 1 }} />}
         renderOption={(props, blocker) => <li {...props}><Typography noWrap>{typeof blocker === 'string' ? blocker : blocker.text}</Typography></li>}
         getOptionLabel={(blocker) => typeof blocker === 'string' ? blocker : blocker.text}
         getOptionKey={(blocker) => typeof blocker === 'string' ? blocker : blocker._id} />;

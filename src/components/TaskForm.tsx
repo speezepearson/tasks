@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { ReqStatus, must, parseISOMillis, useMapify, useNow, useParsed, watchReqStatus } from "../common";
-import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { List, Map } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
 import { TagAutocomplete } from "./TagAutocomplete";
@@ -10,28 +10,31 @@ import { api } from "../../convex/_generated/api";
 import { formatDate } from "date-fns";
 import { BlockerAutocomplete } from "./BlockerAutocomplete";
 import { NewBlockers } from "../../convex/tasks";
+import SubjectIcon from "@mui/icons-material/Subject";
+import Markdown from "react-markdown";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
+export interface TaskFormProps {
     init?: Doc<'tasks'>;
     forceProject?: Doc<'projects'>;
+    recommendedProject?: Doc<'projects'>;
     projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
     onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'details' | 'project' | 'tags' | 'blockedUntilMillis'> & { blockers: NewBlockers }) => Promise<unknown>;
-}) {
-    const inbox = useQuery(api.projects.getInbox);
+}
+
+export function TaskForm({ init, forceProject, recommendedProject, projectsById, onSubmit }: TaskFormProps) {
     const allTasks = useMapify(useQuery(api.tasks.list), '_id');
     const now = useNow();
 
     const defaultProject = useMemo(() => {
         if (forceProject) return forceProject;
+        if (recommendedProject) return recommendedProject;
         if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
-        return inbox;
-    }, [inbox, init, forceProject, projectsById]);
+        if (projectsById) return must(projectsById.valueSeq().find(p => p.name === 'Inbox'), "everybody must have an Inbox project");
+        return undefined;
+    }, [init, forceProject, recommendedProject, projectsById]);
 
-    const [project, setProject] = useState(() => {
-        if (forceProject) return forceProject;
-        if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
-        return inbox;
-    });
+    const [project, setProject] = useState(defaultProject);
     useEffect(() => {
         if (project === undefined) setProject(defaultProject);
     }, [defaultProject, project]);
@@ -99,12 +102,14 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
         })());
     }, [canSubmit, text, details, project, tags, onSubmit, init, defaultProject, setTextF, setDetailsF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers]);
 
+    const [showEditableDetails, setShowEditableDetails] = useState(false);
+
     return <form onSubmit={(e) => {
         e.preventDefault();
         submit();
     }}>
         <Stack direction="column" spacing={2} sx={{ pt: 2 }}>
-            <FormControl>
+            <Stack direction="column" spacing={0.5}>
                 <TextField
                     label="Text"
                     autoFocus
@@ -120,18 +125,37 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
                         }
                     }}
                 />
-                <FormHelperText>You can use markdown here.</FormHelperText>
-            </FormControl>
 
-            <TextField
-                label="Details"
-                autoFocus
-                InputLabelProps={{ shrink: true }}
-                multiline minRows={2} maxRows={6}
-                disabled={req.type === 'working'}
-                value={detailsF}
-                onChange={(e) => { setDetailsF(e.target.value); }}
-            />
+                {showEditableDetails
+                    ? <TextField
+                        label="Details"
+                        autoFocus
+                        sx={{ mt: 5 }}
+                        InputLabelProps={{ shrink: true }}
+                        multiline minRows={2} maxRows={6}
+                        disabled={req.type === 'working'}
+                        value={detailsF}
+                        onChange={(e) => { setDetailsF(e.target.value); }}
+                        onBlur={() => { setShowEditableDetails(false) }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowEditableDetails(false);
+                            }
+                        }}
+                    />
+                    : <Box onClick={(e) => { if (!(e.target instanceof HTMLAnchorElement)) setShowEditableDetails(true) }}>
+                        <Stack sx={{ pl: 2 }} direction="row" spacing={1} alignItems="top" color="GrayText">
+                            <SubjectIcon fontSize="small" />
+                            {details.type === 'ok' && details.value !== ""
+                                ? <Box sx={{ fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif' }}>
+                                    <Markdown>{details.value}</Markdown>
+                                </Box>
+                                : <Typography>Details...</Typography>}
+                        </Stack>
+                    </Box>}
+            </Stack>
 
             {forceProject !== undefined
                 ? null
@@ -157,23 +181,27 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
                 disabled={req.type === 'working'}
             />
 
-            <TextField
-                label="Blocked until"
-                InputLabelProps={{ shrink: true }}
-                error={blockedUntilMillis.type === 'err'}
-                fullWidth
-                type="date"
-                value={blockedUntilF}
-                onChange={(e) => { setBlockedUntilF(e.target.value) }}
-                disabled={req.type === 'working'}
-            />
+            <Accordion defaultExpanded={init?.blockedUntilMillis !== undefined || (init?.blockers.length ?? 0) > 0}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>Blocked?</Typography></AccordionSummary>
+                <AccordionDetails>
+                    <TextField
+                        label="Until date"
+                        InputLabelProps={{ shrink: true }}
+                        error={blockedUntilMillis.type === 'err'}
+                        fullWidth
+                        type="date"
+                        value={blockedUntilF}
+                        onChange={(e) => { setBlockedUntilF(e.target.value) }}
+                        disabled={req.type === 'working'}
+                    />
 
-            <BlockerAutocomplete
-                options={blockerOptions ?? List()}
-                value={blockers}
-                onChange={setBlockers}
-
-            />
+                    <BlockerAutocomplete
+                        options={blockerOptions ?? List()}
+                        value={blockers}
+                        onChange={setBlockers}
+                    />
+                </AccordionDetails>
+            </Accordion>
 
             <Box sx={{ ml: 'auto' }}><Button sx={{ mt: 2, py: 1 }} variant="contained"
                 disabled={!canSubmit}
