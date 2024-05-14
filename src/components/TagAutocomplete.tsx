@@ -24,6 +24,7 @@ export function TagAutocomplete({ value, onChange, disabled }: {
         renderInput={(params) => <TextField {...params} label="Tags" />}
         value={valueArr}
         blurOnSelect={false}
+        filterSelectedOptions
         onChange={(_, newValue) => { onChange(List(newValue)); }}
 
         inputValue={inputValue}
