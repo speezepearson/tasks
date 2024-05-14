@@ -16,6 +16,7 @@ export type NewBlockers = typeof vNewBlockers.type;
 export const create = mutationWithUser({
   args: {
     text: v.string(),
+    details: v.optional(v.string()),
     blockedUntilMillis: v.optional(v.number()),
     blockers: v.optional(vNewBlockers),
     project: v.id('projects'),
@@ -26,6 +27,7 @@ export const create = mutationWithUser({
     return await ctx.db.insert("tasks", {
       owner: ctx.user._id,
       text: args.text,
+      details: args.details ?? '',
       project: args.project,
       blockedUntilMillis: args.blockedUntilMillis,
       blockers,
@@ -172,6 +174,7 @@ async function concretizeBlockers(
       const newTaskId = await ctx.db.insert("tasks", {
         owner: ctx.user._id,
         text: blocker.text,
+        details: '',
         project: project,
         blockers: [],
         tags: [],

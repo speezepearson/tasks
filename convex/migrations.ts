@@ -8,7 +8,7 @@ const migration = makeMigration(internalMutation, {
 export const defaultTaskDetails = migration({
     table: "tasks",
     migrateOne: async (ctx, doc) => {
-        if (doc.details === undefined) {
+        if (doc.details === undefined) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
             await ctx.db.patch(doc._id, { details: '' });
         }
     },
