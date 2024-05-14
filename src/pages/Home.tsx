@@ -3,12 +3,13 @@ import { api } from "../../convex/_generated/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, Map, Set } from "immutable";
 import { useListify, must, textMatches, useNow, listcmp } from "../common";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Fab, Stack, TextField, Typography } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
 import { byUniqueKey } from "../common";
 import { ProjectCard } from "../components/ProjectCard";
 import { QuickCaptureForm } from "../components/QuickCaptureForm";
 import AddIcon from "@mui/icons-material/Add";
+import AddRoadIcon from "@mui/icons-material/AddRoad";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Doc } from "../../convex/_generated/dataModel";
 import { ProjectForm } from "../components/ProjectForm";
@@ -205,15 +206,12 @@ function Footer() {
         return () => { window.removeEventListener('keydown', handleKeyDown) };
     }, []);
 
-    return <Paper component="footer" sx={{ position: 'fixed', bottom: 0, right: 0, p: 1 }}>
+    return <Box component="footer" sx={{ position: "fixed", bottom: 0, right: 0, p: 1 }}>
         <Stack direction="row" spacing={1}>
-
-            <Button variant="outlined" onClick={() => { setShowCreateProjectModal(true) }}>+project</Button>
+            <Fab onClick={() => { setShowCreateProjectModal(true) }}><AddRoadIcon /></Fab>
             {showCreateProjectModal && <CreateProjectModal onClose={() => { setShowCreateProjectModal(false) }} />}
 
-            <Button variant="contained" sx={{ width: '10em' }} onClick={() => { setShowQuickCapture(true) }}>
-                <AddIcon /> (q)
-            </Button>
+            <Fab color="primary" onClick={() => { setShowQuickCapture(true) }}><AddIcon /></Fab>
             {showQuickCapture && <Dialog open fullWidth onClose={() => { setShowQuickCapture(false) }} PaperProps={{ sx: { position: 'absolute', top: 0 } }}>
                 <DialogTitle>Quick Capture</DialogTitle>
                 <DialogContent>
@@ -224,7 +222,7 @@ function Footer() {
                 </DialogActions>
             </Dialog>}
         </Stack>
-    </Paper>;
+    </Box>;
 }
 
 function CreateProjectModal({ onClose }: { onClose: () => void }) {
