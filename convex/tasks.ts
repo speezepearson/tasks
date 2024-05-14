@@ -73,13 +73,14 @@ export const update = mutationWithUser({
   args: {
     id: v.id("tasks"),
     text: v.optional(v.string()),
+    details: v.optional(v.string()),
     project: v.optional(v.id('projects')),
     blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
     blockers: v.optional(vNewBlockers),
     addTags: v.optional(v.array(v.string())),
     delTags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { id, text, project, blockedUntilMillis, blockers, addTags, delTags }) => {
+  handler: async (ctx, { id, text, details, project, blockedUntilMillis, blockers, addTags, delTags }) => {
     const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
     if (task === null) {
       throw new Error('not found');
@@ -98,6 +99,7 @@ export const update = mutationWithUser({
     const fullBlockers = blockers && await concretizeBlockers(ctx, blockers, task.project);
     await ctx.db.patch(id, {
       ...(text !== undefined ? { text } : {}),
+      ...(details !== undefined ? { details } : {}),
       ...(project !== undefined ? { project } : {}),
       ...(blockedUntilMillis !== undefined ? { blockedUntilMillis: blockedUntilMillis.new } : {}),
       ...(fullBlockers !== undefined ? { blockers: fullBlockers } : {}),

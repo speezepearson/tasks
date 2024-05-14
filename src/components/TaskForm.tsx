@@ -15,7 +15,7 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
     init?: Doc<'tasks'>;
     forceProject?: Doc<'projects'>;
     projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
-    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags' | 'blockedUntilMillis'> & { blockers: NewBlockers }) => Promise<unknown>;
+    onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'details' | 'project' | 'tags' | 'blockedUntilMillis'> & { blockers: NewBlockers }) => Promise<unknown>;
 }) {
     const inbox = useQuery(api.projects.getInbox);
     const allTasks = useMapify(useQuery(api.tasks.list), '_id');
@@ -45,6 +45,10 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
             : { type: 'ok', value: textF };
     }, []));
 
+    const [details, detailsF, setDetailsF] = useParsed(init?.details ?? "", useCallback(detailsF => {
+        return { type: 'ok', value: detailsF.trim() };
+    }, []));
+
     const [blockedUntilMillis, blockedUntilF, setBlockedUntilF] = useParsed(init?.blockedUntilMillis ? formatDate(init.blockedUntilMillis, 'yyyy-MM-dd') : '', useCallback(blockedUntilF => {
         const millis = parseISOMillis(blockedUntilF);
         if (millis === undefined) return { type: 'ok', value: undefined };
@@ -68,6 +72,7 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
     const canSubmit = req.type !== 'working'
         && project !== undefined
         && text.type === 'ok'
+        && details.type === 'ok'
         && blockedUntilMillis.type === 'ok'
         && projectFieldValid;
 
@@ -76,6 +81,7 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
         watchReqStatus(setReq, (async () => {
             await onSubmit({
                 text: text.value,
+                details: details.value,
                 project: project._id,
                 tags: List(tags).sort().toArray(),
                 blockedUntilMillis: blockedUntilMillis.value,
@@ -83,6 +89,7 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
             }).then(() => {
                 if (!init) {
                     setTextF("");
+                    setDetailsF("");
                     setProject(defaultProject);
                     setBlockedUntilF('');
                     setBlockers(List());
@@ -90,7 +97,7 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
                 }
             })
         })());
-    }, [canSubmit, text, project, tags, onSubmit, init, defaultProject, setTextF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers]);
+    }, [canSubmit, text, details, project, tags, onSubmit, init, defaultProject, setTextF, setDetailsF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -115,6 +122,16 @@ export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
                 />
                 <FormHelperText>You can use markdown here.</FormHelperText>
             </FormControl>
+
+            <TextField
+                label="Details"
+                autoFocus
+                InputLabelProps={{ shrink: true }}
+                multiline minRows={2} maxRows={6}
+                disabled={req.type === 'working'}
+                value={detailsF}
+                onChange={(e) => { setDetailsF(e.target.value); }}
+            />
 
             {forceProject !== undefined
                 ? null

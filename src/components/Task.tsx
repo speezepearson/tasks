@@ -33,10 +33,11 @@ export function Task({ task, projectsById, tasksById }: {
             <DialogContent>
                 <TaskForm
                     init={task}
-                    onSubmit={async ({ text, project, tags, blockedUntilMillis, blockers }) => {
+                    onSubmit={async ({ text, details, project, tags, blockedUntilMillis, blockers }) => {
                         await updateTask({
                             id: task._id,
                             text,
+                            details,
                             project,
                             blockedUntilMillis: { new: blockedUntilMillis },
                             blockers,
@@ -66,7 +67,6 @@ export function Task({ task, projectsById, tasksById }: {
             {" "}
             <Box sx={{ mx: 1, flexGrow: 1 }} role="button" onClick={() => { setEditing(true); }}>
                 <Typography sx={{ color: blocked ? 'gray' : 'inherit', display: 'inline-block', mr: 1 }}>
-
                     <SingleLineMarkdown>{task.text}</SingleLineMarkdown>
                 </Typography>
                 {task.tags.map((tag =>
