@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, parseISOMillis, useMapify, useParsed, watchReqStatus } from "../common";
+import { ReqStatus, must, parseISOMillis, useMapify, useNow, useParsed, watchReqStatus } from "../common";
 import { Box, Button, FormControl, FormHelperText, Stack, TextField } from "@mui/material";
 import { List, Map } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
@@ -11,22 +11,31 @@ import { formatDate } from "date-fns";
 import { BlockerAutocomplete } from "./BlockerAutocomplete";
 import { NewBlockers } from "../../convex/tasks";
 
-export function TaskForm({ init, initProject, projectsById, onSubmit }: {
+export function TaskForm({ init, forceProject, projectsById, onSubmit }: {
     init?: Doc<'tasks'>;
-    initProject?: Doc<'projects'>;
+    forceProject?: Doc<'projects'>;
     projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
     onSubmit: (args: Pick<Doc<'tasks'>, 'text' | 'project' | 'tags' | 'blockedUntilMillis'> & { blockers: NewBlockers }) => Promise<unknown>;
 }) {
     const inbox = useQuery(api.projects.getInbox);
     const allTasks = useMapify(useQuery(api.tasks.list), '_id');
+    const now = useNow();
 
-    initProject = useMemo(() => {
+    const defaultProject = useMemo(() => {
+        if (forceProject) return forceProject;
         if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
-        if (initProject) return initProject;
         return inbox;
-    }, [inbox, init, initProject, projectsById]);
+    }, [inbox, init, forceProject, projectsById]);
 
-    const [project, setProject] = useState(initProject);
+    const [project, setProject] = useState(() => {
+        if (forceProject) return forceProject;
+        if (init) return must(projectsById?.get(init.project), "task references nonexistent project");
+        return inbox;
+    });
+    useEffect(() => {
+        if (project === undefined) setProject(defaultProject);
+    }, [defaultProject, project]);
+
     const [projectFieldValid, setProjectFieldValid] = useState(true);
 
     const [text, textF, setTextF] = useParsed(init?.text ?? "", useCallback(textF => {
@@ -38,16 +47,21 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
 
     const [blockedUntilMillis, blockedUntilF, setBlockedUntilF] = useParsed(init?.blockedUntilMillis ? formatDate(init.blockedUntilMillis, 'yyyy-MM-dd') : '', useCallback(blockedUntilF => {
         const millis = parseISOMillis(blockedUntilF);
-        // don't check whether it's in the future, because we're editing an existing delegation, which might have already timed out
-        return millis === undefined
-            ? { type: 'ok', value: undefined }
-            : { type: 'ok', value: millis };
-    }, []));
-    const blockerOptions = useMemo(() => allTasks?.valueSeq().filter(t => t.project === initProject?._id && t._id !== init?._id && t.completedAtMillis === undefined).toList(), [allTasks, init, initProject]);
+        if (millis === undefined) return { type: 'ok', value: undefined };
+        if (init !== undefined) return { type: 'ok', value: millis }; // editing an existing task, it's okay if the date is in the past
+        if (millis < now.getTime()) return { type: 'err', message: "New task's blocked-until must be in the future" };
+        return { type: 'ok', value: millis };
+    }, [init, now]));
+    const blockerOptions = useMemo(
+        () => allTasks?.valueSeq().filter(
+            t => t.project === project?._id
+                && t._id !== init?._id
+                && t.completedAtMillis === undefined).toList(),
+        [allTasks, init, project]);
     const [blockers, setBlockers] = useState<List<Doc<'tasks'> | string>>(List());
     useEffect(() => { init?.blockers && setBlockers(List(init.blockers).map(b => must(allTasks?.get(b.id), 'blocker not found'))) }, [init?.blockers, allTasks]);
 
-    const [tags, setTags] = useState(List(init?.tags ?? []))
+    const [tags, setTags] = useState(init?.tags && List(init.tags))
 
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
 
@@ -69,14 +83,14 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
             }).then(() => {
                 if (!init) {
                     setTextF("");
-                    setProject(initProject);
+                    setProject(defaultProject);
                     setBlockedUntilF('');
                     setBlockers(List());
                     setTags(List());
                 }
             })
         })());
-    }, [canSubmit, text, project, tags, onSubmit, init, initProject, setTextF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers]);
+    }, [canSubmit, text, project, tags, onSubmit, init, defaultProject, setTextF, blockedUntilMillis, setBlockedUntilF, blockers, setBlockers]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -102,16 +116,26 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 <FormHelperText>You can use markdown here.</FormHelperText>
             </FormControl>
 
-            {projectsById !== undefined && project !== undefined && <ProjectAutocomplete
-                value={project}
-                projectsById={projectsById}
-                onChange={setProject}
-                onValid={setProjectFieldValid}
-                disabled={req.type === 'working'}
-            />}
+            {forceProject !== undefined
+                ? null
+                : projectsById === undefined || project === undefined
+                    ? <TextField
+                        label="Project"
+                        fullWidth
+                        disabled
+                        value="Loading projects..."
+                    />
+                    : <ProjectAutocomplete
+                        value={project}
+                        projectsById={projectsById}
+                        onChange={setProject}
+                        onValid={setProjectFieldValid}
+                        disabled={req.type === 'working'}
+                    />
+            }
 
             <TagAutocomplete
-                value={tags}
+                value={tags ?? List()}
                 onChange={setTags}
                 disabled={req.type === 'working'}
             />
@@ -126,6 +150,7 @@ export function TaskForm({ init, initProject, projectsById, onSubmit }: {
                 onChange={(e) => { setBlockedUntilF(e.target.value) }}
                 disabled={req.type === 'working'}
             />
+
             <BlockerAutocomplete
                 options={blockerOptions ?? List()}
                 value={blockers}

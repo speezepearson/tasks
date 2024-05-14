@@ -5,7 +5,6 @@ import * as Home from "./pages/Home";
 import * as Add from "./pages/QuickCapture";
 import * as Parameterized from "./pages/Project";
 import { Id } from "../convex/_generated/dataModel";
-import { Authenticated } from "convex/react";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function WrapElement<T>({ element }: { element: (props: T) => ReactNode }): ReactNode {
@@ -23,7 +22,7 @@ export const router = createHashRouter([
         children: [
             {
                 path: "/",
-                element: <Authenticated><Home.Page /></Authenticated>,
+                element: <Home.Page />,
             },
             {
                 path: "/add",

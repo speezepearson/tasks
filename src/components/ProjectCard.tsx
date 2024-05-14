@@ -64,7 +64,7 @@ export function ProjectCard({
             <DialogContent>
                 <TaskForm
                     init={undefined}
-                    initProject={project}
+                    forceProject={project}
                     projectsById={projectsById}
                     onSubmit={async ({ text, project, tags, blockedUntilMillis, blockers }) => {
                         await createTask({ text, project, tags, blockedUntilMillis, blockers });
