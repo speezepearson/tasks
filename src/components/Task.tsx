@@ -1,13 +1,13 @@
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
-import { Map, Set } from "immutable";
+import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
 import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
-import { TaskForm } from "./TaskForm";
+import { EditTaskForm } from "./TaskForm";
 import ClearIcon from "@mui/icons-material/Clear";
 import { SingleLineMarkdown } from "./Markdown";
 
@@ -31,21 +31,9 @@ export function Task({ task, projectsById, tasksById }: {
         {editing && <Dialog open onClose={() => { setEditing(false) }} fullWidth>
             <DialogTitle>Edit task</DialogTitle>
             <DialogContent>
-                <TaskForm
+                <EditTaskForm
                     init={task}
-                    onSubmit={async ({ text, details, project, tags, blockedUntilMillis, blockers }) => {
-                        await updateTask({
-                            id: task._id,
-                            text,
-                            details,
-                            project,
-                            blockedUntilMillis: { new: blockedUntilMillis },
-                            blockers,
-                            addTags: Set(tags).subtract(Set(task.tags)).toArray(),
-                            delTags: Set(task.tags).subtract(Set(tags)).toArray(),
-                        });
-                        setEditing(false);
-                    }}
+                    onUpdate={() => { setEditing(false) }}
                     projectsById={projectsById}
                 />
             </DialogContent>

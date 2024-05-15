@@ -201,3 +201,10 @@ export function useMiscProject(projectsById: Map<Id<'projects'>, Doc<'projects'>
         [projectsById],
     );
 }
+
+export function isComplete(task: Doc<'tasks'>): boolean {
+    return task.completedAtMillis !== undefined;
+}
+export function isInProject(project: Id<'projects'>, task: Doc<'tasks'>): boolean {
+    return task.project === project;
+}

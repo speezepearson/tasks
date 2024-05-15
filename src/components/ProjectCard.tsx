@@ -8,7 +8,7 @@ import { Task } from "./Task";
 import { ProjectForm } from "./ProjectForm";
 import { listcmp } from "../common";
 import AddIcon from "@mui/icons-material/Add";
-import { TaskForm } from "./TaskForm";
+import { CreateTaskForm } from "./TaskForm";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
@@ -22,7 +22,6 @@ export function ProjectCard({
 }) {
     const archiveProject = useMutation(api.projects.archive);
     const updateProject = useMutation(api.projects.update);
-    const createTask = useMutation(api.tasks.create);
 
     const [expanded, setExpanded] = useState(!projectTasks.isEmpty());
     const allProjectsList = useMemo(() => List(projectsById.values()), [projectsById]);
@@ -62,14 +61,10 @@ export function ProjectCard({
         >
             <DialogTitle>Create Task</DialogTitle>
             <DialogContent>
-                <TaskForm
-                    init={undefined}
+                <CreateTaskForm
                     forceProject={project}
                     projectsById={projectsById}
-                    onSubmit={async ({ text, project, tags, blockedUntilMillis, blockers }) => {
-                        await createTask({ text, project, tags, blockedUntilMillis, blockers });
-                        setShowAddTaskModal(false);
-                    }}
+                    onUpdate={() => { setShowAddTaskModal(false) }}
                 />
             </DialogContent>
             <DialogActions>

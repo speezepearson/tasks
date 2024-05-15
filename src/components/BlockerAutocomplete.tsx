@@ -1,19 +1,20 @@
 import { useMemo } from "react";
 import { List } from "immutable";
 import { Doc } from "../../convex/_generated/dataModel";
-import { Autocomplete, TextField, Typography } from "@mui/material";
+import { Autocomplete, AutocompleteProps, TextField, Typography } from "@mui/material";
 
 
-export function BlockerAutocomplete({ value, onChange, options, label = 'Blocked on tasks...' }: {
+export function BlockerAutocomplete({ value, onChange, options, label = 'Blocked on tasks...', ...props }: {
     options: List<Doc<'tasks'>>;
     value: List<Doc<'tasks'> | string>;
     onChange: (value: List<Doc<'tasks'> | string>) => void;
     label?: string;
-}) {
+} & Omit<AutocompleteProps<Doc<'tasks'>, true, false, true>, 'options' | 'value' | 'onChange' | 'label' | 'renderInput' | 'renderOption' | 'getOptionLabel'>) {
     const optionsArr = useMemo(() => options.toArray(), [options]);
     const valueArr = useMemo(() => value.toArray(), [value]);
 
     return <Autocomplete
+        {...props}
         multiple
         freeSolo
         fullWidth

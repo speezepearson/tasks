@@ -7,18 +7,18 @@ import { getOneFiltered } from "./lib/helpers";
 import { Set } from "immutable";
 import { MutationCtx } from "./_generated/server";
 
-const vNewBlockers = v.array(v.union(
+const vNewBlocker = v.union(
   v.object({ type: v.literal('newTask'), text: v.string() }),
   vBlocker,
-))
-export type NewBlockers = typeof vNewBlockers.type;
+)
+export type NewBlocker = typeof vNewBlocker.type;
 
 export const create = mutationWithUser({
   args: {
     text: v.string(),
     details: v.optional(v.string()),
     blockedUntilMillis: v.optional(v.number()),
-    blockers: v.optional(vNewBlockers),
+    blockers: v.optional(v.array(vNewBlocker)),
     project: v.id('projects'),
     tags: v.optional(v.array(v.string())),
   },
@@ -76,11 +76,12 @@ export const update = mutationWithUser({
     details: v.optional(v.string()),
     project: v.optional(v.id('projects')),
     blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
-    blockers: v.optional(vNewBlockers),
+    blockers: v.optional(v.array(vNewBlocker)),
     addTags: v.optional(v.array(v.string())),
     delTags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { id, text, details, project, blockedUntilMillis, blockers, addTags, delTags }) => {
+    console.log("updating", { id, details })
     const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
     if (task === null) {
       throw new Error('not found');
@@ -167,7 +168,7 @@ export const linkBlocker = mutationWithUser({
 
 async function concretizeBlockers(
   ctx: MutationCtx & { user: Doc<'users'> },
-  blockers: NewBlockers,
+  blockers: NewBlocker[],
   project: Id<'projects'>,
 ) {
 

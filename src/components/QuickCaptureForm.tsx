@@ -1,14 +1,12 @@
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCallback, useEffect, useRef } from "react";
-import { TaskForm, TaskFormProps } from "./TaskForm";
+import { CreateTaskForm, CreateTaskFormProps } from "./TaskForm";
 import { useMapify } from "../common";
 import Box from "@mui/material/Box/Box";
 
-export function QuickCaptureForm(props: Omit<TaskFormProps, 'onSubmit'>) {
+export function QuickCaptureForm(props: Omit<CreateTaskFormProps, 'projectsById'>) {
     const projectsById = useMapify(useQuery(api.projects.list), '_id');
-
-    const createTask = useMutation(api.tasks.create);
 
     const ref = useRef<HTMLDivElement>(null);
     const refocus = useCallback(() => {
@@ -20,9 +18,8 @@ export function QuickCaptureForm(props: Omit<TaskFormProps, 'onSubmit'>) {
 
     useEffect(refocus, [refocus])
 
-    return <Box ref={ref}><TaskForm
+    return <Box ref={ref}><CreateTaskForm
         projectsById={projectsById}
-        onSubmit={args => createTask(args).then(refocus)}
         {...props}
     /></Box>
 }
