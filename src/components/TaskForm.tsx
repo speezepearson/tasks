@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { ReqStatus, must, useMapify, useNow, useParsed, watchReqStatus } from "../common";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Stack, TextField, Typography } from "@mui/material";
@@ -25,6 +25,8 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
 
     const allTasks = useMapify(useQuery(api.tasks.list, useConvexAuth().isAuthenticated ? {} : 'skip'), '_id');
     const now = useNow();
+
+    const textRef = useRef<HTMLTextAreaElement>(null);
 
     const [project, setProject] = useState(forceProject ?? recommendedProject ?? inbox);
     const [projectFieldValid, setProjectFieldValid] = useState(true);
@@ -74,9 +76,18 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 tags: tags.sort().toArray(),
                 blockedUntilMillis: blockedUntilMillis.value,
                 blockers: blockers.map(b => typeof b === 'string' ? { type: 'newTask' as const, text: b } : { type: 'task' as const, id: b._id }).toArray(),
-            }).then(onCreate)
+            }).then(() => {
+                onCreate?.();
+                setTextF('');
+                setDetailsF('');
+                // don't reset the project, so that the user can easily create multiple tasks in the same project
+                setTags(List());
+                setBlockedUntilF(undefined);
+                setBlockers(List());
+                setTimeout(() => { textRef.current?.focus() }, 0);
+            })
         })());
-    }, [canSubmit, text, detailsF, project, tags, blockedUntilMillis, blockers, createTask, onCreate]);
+    }, [canSubmit, text, detailsF, project, tags, blockedUntilMillis, blockers, createTask, onCreate, setTextF, setDetailsF, setTags, setBlockedUntilF, setBlockers]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
@@ -86,6 +97,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
             <Stack direction="column" spacing={0.5}>
                 <TextField
                     label="Text"
+                    inputRef={textRef}
                     autoFocus
                     multiline maxRows={6}
                     error={text.type === 'err'}
