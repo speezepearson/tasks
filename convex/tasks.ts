@@ -77,21 +77,23 @@ export const update = mutationWithUser({
     project: v.optional(v.id('projects')),
     blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
     blockers: v.optional(v.array(vNewBlocker)),
-    addTags: v.optional(v.array(v.string())),
-    delTags: v.optional(v.array(v.string())),
+    tags: v.optional(v.object({
+      add: v.optional(v.array(v.string())),
+      del: v.optional(v.array(v.string())),
+    }))
   },
-  handler: async (ctx, { id, text, details, project, blockedUntilMillis, blockers, addTags, delTags }) => {
+  handler: async (ctx, { id, text, details, project, blockedUntilMillis, blockers, tags }) => {
     console.log("updating", { id, details })
     const task = await getOneFiltered(ctx.db, id, 'owner', ctx.user._id);
     if (task === null) {
       throw new Error('not found');
     }
-    const tags = (() => {
-      if (addTags === undefined && delTags === undefined) {
+    const newTags = tags && (() => {
+      if (tags.add === undefined && tags.del === undefined) {
         return undefined;
       }
-      const add = Set(addTags ?? []);
-      const del = Set(delTags ?? []);
+      const add = Set(tags.add ?? []);
+      const del = Set(tags.del ?? []);
       if (add.intersect(del).size > 0) {
         throw new Error('tags to add and delete overlap');
       }
@@ -104,7 +106,7 @@ export const update = mutationWithUser({
       ...(project !== undefined ? { project } : {}),
       ...(blockedUntilMillis !== undefined ? { blockedUntilMillis: blockedUntilMillis.new } : {}),
       ...(fullBlockers !== undefined ? { blockers: fullBlockers } : {}),
-      ...(tags !== undefined ? { tags } : {}),
+      ...(newTags !== undefined ? { newTags } : {}),
     });
   },
 });

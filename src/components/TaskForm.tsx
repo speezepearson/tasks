@@ -231,8 +231,10 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
                 text: text.value,
                 details: detailsF,
                 project: project._id,
-                addTags: Set(tags).subtract(Set(init.tags)).toArray(),
-                delTags: Set(init.tags).subtract(Set(tags)).toArray(),
+                tags: {
+                    add: Set(tags).subtract(Set(init.tags)).toArray(),
+                    del: Set(init.tags).subtract(Set(tags)).toArray(),
+                },
                 blockedUntilMillis: { new: blockedUntil },
                 blockers: blockers.map(b => typeof b === 'string' ? { type: 'newTask' as const, text: b } : { type: 'task' as const, id: b._id }).toArray(),
             }).then(onUpdate)

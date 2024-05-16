@@ -66,7 +66,7 @@ export function Task({ task, projectsById, tasksById }: {
                                 if (req.type === 'working') return;
                                 watchReqStatus(setReq, updateTask({
                                     id: task._id,
-                                    delTags: [tag],
+                                    tags: { del: [tag] },
                                 }));
                             }}>
                                 <ClearIcon sx={{ ml: 0.3, fontSize: 10 }} />
