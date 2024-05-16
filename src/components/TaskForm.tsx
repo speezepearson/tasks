@@ -16,10 +16,10 @@ export interface CreateTaskFormProps {
     forceProject?: Doc<'projects'>;
     recommendedProject?: Doc<'projects'>;
     projectsById?: Map<Id<'projects'>, Doc<'projects'>>;
-    onUpdate?: () => void;
+    onCreate?: () => void;
 }
 
-export function CreateTaskForm({ forceProject, recommendedProject, projectsById, onUpdate }: CreateTaskFormProps) {
+export function CreateTaskForm({ forceProject, recommendedProject, projectsById, onCreate }: CreateTaskFormProps) {
     const inbox = projectsById?.valueSeq().find(p => p.name === 'Inbox');
     const createTask = useMutation(api.tasks.create);
 
@@ -74,9 +74,9 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 tags: tags.sort().toArray(),
                 blockedUntilMillis: blockedUntilMillis.value,
                 blockers: blockers.map(b => typeof b === 'string' ? { type: 'newTask' as const, text: b } : { type: 'task' as const, id: b._id }).toArray(),
-            }).then(onUpdate)
+            }).then(onCreate)
         })());
-    }, [canSubmit, text, detailsF, project, tags, blockedUntilMillis, blockers, createTask, onUpdate]);
+    }, [canSubmit, text, detailsF, project, tags, blockedUntilMillis, blockers, createTask, onCreate]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();

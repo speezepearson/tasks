@@ -64,7 +64,7 @@ export function ProjectCard({
                 <CreateTaskForm
                     forceProject={project}
                     projectsById={projectsById}
-                    onUpdate={() => { setShowAddTaskModal(false) }}
+                    onCreate={() => { setShowAddTaskModal(false) }}
                 />
             </DialogContent>
             <DialogActions>
