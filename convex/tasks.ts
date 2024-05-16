@@ -76,7 +76,10 @@ export const update = mutationWithUser({
     details: v.optional(v.string()),
     project: v.optional(v.id('projects')),
     blockedUntilMillis: v.optional(v.object({ new: v.optional(v.number()) })),
-    blockers: v.optional(v.array(vNewBlocker)),
+    blockers: v.optional(v.object({
+      add: v.optional(v.array(vNewBlocker)),
+      del: v.optional(v.array(vBlocker)),
+    })),
     tags: v.optional(v.object({
       add: v.optional(v.array(v.string())),
       del: v.optional(v.array(v.string())),
@@ -99,14 +102,21 @@ export const update = mutationWithUser({
       }
       return Set(task.tags).union(add).subtract(del).toList().sort().toArray();
     })();
-    const fullBlockers = blockers && await concretizeBlockers(ctx, blockers, task.project);
+    const newBlockers = blockers && await (async () => {
+      if (blockers.add === undefined && blockers.del === undefined) {
+        return undefined;
+      }
+      const add = await concretizeBlockers(ctx, blockers.add ?? [], task.project);
+      const del = blockers.del ?? [];
+      return task.blockers.filter((b) => !del.some((d) => blockersEqual(b, d))).concat(add);
+    })();
     await ctx.db.patch(id, {
       ...(text !== undefined ? { text } : {}),
       ...(details !== undefined ? { details } : {}),
       ...(project !== undefined ? { project } : {}),
       ...(blockedUntilMillis !== undefined ? { blockedUntilMillis: blockedUntilMillis.new } : {}),
-      ...(fullBlockers !== undefined ? { blockers: fullBlockers } : {}),
-      ...(newTags !== undefined ? { newTags } : {}),
+      ...(newBlockers !== undefined ? { blockers: newBlockers } : {}),
+      ...(newTags !== undefined ? { tags: newTags } : {}),
     });
   },
 });

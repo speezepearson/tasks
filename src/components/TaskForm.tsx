@@ -209,7 +209,11 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
     const [blockers, setBlockers] = useState<List<Doc<'tasks'> | string> | undefined>(undefined);
     useEffect(() => {
         if (blockers === undefined && allTasks !== undefined) {
-            setBlockers(List(init.blockers.map(b => must(allTasks.get(b.id), "task references nonexistent blocker-task"))));
+            setBlockers(List(
+                init.blockers
+                    .map(b => must(allTasks.get(b.id), "task references nonexistent blocker-task"))
+                    .filter(t => t.completedAtMillis === undefined)
+            ));
         }
     }, [blockers, allTasks, init, setBlockers])
 
@@ -225,7 +229,6 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
     const submit = useCallback(() => {
         if (!canSubmit) return;
         watchReqStatus(setReq, (async () => {
-            console.log("updating", { detailsF })
             await updateTask({
                 id: init._id,
                 text: text.value,
@@ -236,10 +239,20 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
                     del: Set(init.tags).subtract(Set(tags)).toArray(),
                 },
                 blockedUntilMillis: { new: blockedUntil },
-                blockers: blockers.map(b => typeof b === 'string' ? { type: 'newTask' as const, text: b } : { type: 'task' as const, id: b._id }).toArray(),
+                blockers: {
+                    add: blockers
+                        .map(b => typeof b === 'string'
+                            ? { type: 'newTask' as const, text: b }
+                            : { type: 'task' as const, id: b._id })
+                        .filter(b => b.type === 'newTask' || !init.blockers.some(t => t.id == b.id))
+                        .toArray(),
+                    del: init.blockers
+                        .filter(b => must(allTasks?.get(b.id), "task references nonexistent blocker-task").completedAtMillis === undefined)
+                        .filter(b => !blockers.some(t => typeof t !== 'string' && t._id == b.id)),
+                },
             }).then(onUpdate)
         })());
-    }, [canSubmit, text, detailsF, project, tags, init, blockedUntil, blockers, onUpdate, updateTask]);
+    }, [canSubmit, text, detailsF, project, tags, init, blockedUntil, blockers, onUpdate, updateTask, allTasks]);
 
     return <form onSubmit={(e) => {
         e.preventDefault();
