@@ -5,7 +5,7 @@ import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { formatDate } from "date-fns";
-import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack } from "@mui/material";
+import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
 import { EditTaskForm } from "./TaskForm";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -78,32 +78,30 @@ export function Task({ task, projectsById, tasksById }: {
         </Stack>
         {blocked
             && <Box sx={{ ml: 4 }}>
-                {task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime() && <Box>
-                    Blocked until: {formatDate(task.blockedUntilMillis, 'yyyy-MM-dd HH:mm')}
-                    {" "}
+                {task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime() && <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography>Blocked until {formatDate(task.blockedUntilMillis, 'yyyy-MM-dd')}</Typography>
                     <Button
-                        variant="outlined"
+                        variant="outlined" sx={{ py: 0 }}
                         onClick={() => { watchReqStatus(setReq, updateTask({ id: task._id, blockedUntilMillis: { new: undefined } })) }}
                     >
                         Clear
                     </Button>
-                </Box>}
+                </Stack>}
                 {outstandingBlockers.map((blocker) => {
-                    const unlinkButton = <Button
-                        variant="outlined"
-                        onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}
-                    >
-                        Unlink
-                    </Button>;
                     switch (blocker.type) {
                         case "task":
-                            return <Box key={blocker.id}>
-                                Blocked on task: {" "}
+                            return <Stack direction="row" alignItems="center" spacing={1} key={blocker.id}>
+                                <Typography>Blocked on task:</Typography>
                                 <SingleLineMarkdown>
                                     {must(tasksById.get(blocker.id), "task-blocker references nonexistent task").text}
                                 </SingleLineMarkdown>
-                                {" "} {unlinkButton}
-                            </Box>;
+                                <Button
+                                    variant="outlined" sx={{ py: 0 }}
+                                    onClick={() => { watchReqStatus(setReq, unlinkBlocker({ id: task._id, blocker })) }}
+                                >
+                                    Unlink
+                                </Button>
+                            </Stack>;
                     }
                 })}
             </Box>}
