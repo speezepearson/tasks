@@ -7,7 +7,10 @@ export function OptionalDateField({ value, onChange, ...props }: {
     value: number | undefined;
     onChange: (value: number | undefined) => void;
 } & Omit<TextFieldProps, 'value' | 'onChange'>) {
-    const [textF, setTextF] = useState(value ? formatDate(value, 'yyyy-MM-dd') : '');
+    const [textF, setTextF] = useState('');
+    useEffect(() => {
+        setTextF(value ? formatDate(value, 'yyyy-MM-dd') : '');
+    }, [value]);
     useEffect(() => { onChange(parseISOMillis(textF)) }, [textF, onChange]);
 
     return <TextField
