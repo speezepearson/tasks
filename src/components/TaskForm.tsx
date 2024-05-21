@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, useMapify, useNow, useParsed, watchReqStatus } from "../common";
+import { ReqStatus, must, parseLazyDate, useMapify, useNow, useParsed, watchReqStatus } from "../common";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { List, Map, Set } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
@@ -55,8 +55,33 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 && t.completedAtMillis === undefined).toList(),
         [allTasks, project]);
     const [blockers, setBlockers] = useState<List<Doc<'tasks'> | string>>(List());
+    const [expandBlockers, setExpandBlockers] = useState(false);
 
     const [tags, setTags] = useState(List<string>())
+
+    useEffect(() => {
+        if (textF.endsWith('.')) {
+            const remainder = textF.slice(0, -1);
+            const due = parseLazyDate(now, remainder);
+            if (due !== undefined) {
+                setBlockedUntilF(due.getTime());
+                setExpandBlockers(true);
+                setTextF('');
+            }
+        }
+        if (textF.startsWith('@') && textF.endsWith(' ')) {
+            setTags(tags.push(textF.slice(1, -1)));
+            setTextF('');
+        }
+        if (textF.startsWith('#')) {
+            const projectName = textF.slice(1).trim().toLowerCase();
+            const project = projectsById?.valueSeq().find(p => p.name.toLowerCase() === projectName);
+            if (project !== undefined) {
+                setProject(project);
+                setTextF('');
+            }
+        }
+    }, [textF, now, setBlockedUntilF, setTextF, projectsById, tags]);
 
     const [req, setReq] = useState<ReqStatus>({ type: 'idle' });
 
@@ -140,7 +165,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 disabled={req.type === 'working'}
             />
 
-            <Accordion>
+            <Accordion expanded={expandBlockers} onChange={() => { setExpandBlockers(!expandBlockers) }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>Blocked?</Typography></AccordionSummary>
                 <AccordionDetails>
                     <OptionalDateField

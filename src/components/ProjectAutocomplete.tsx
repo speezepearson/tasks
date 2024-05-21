@@ -26,6 +26,11 @@ export function ProjectAutocomplete({ projectsById, value, onChange, onValid, di
         }
     }, [curProject, onChange, onValid]);
 
+    useEffect(() => {
+        setInputValue(value.name);
+        setLastValidProject(value);
+    }, [value]);
+
     const options = useMemo(() =>
         projectsByName.valueSeq()
             .sortBy((p) => p.name)

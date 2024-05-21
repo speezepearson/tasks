@@ -3,7 +3,15 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Map, List } from "immutable";
 import { Doc, Id } from "../convex/_generated/dataModel";
-import { parseISO } from "date-fns";
+import { parseISO, startOfDay } from "date-fns";
+import { nextSunday } from "date-fns/nextSunday";
+import { addDays } from "date-fns/addDays";
+import { nextTuesday } from "date-fns/nextTuesday";
+import { nextWednesday } from "date-fns/nextWednesday";
+import { nextThursday } from "date-fns/nextThursday";
+import { nextFriday } from "date-fns/nextFriday";
+import { nextSaturday } from "date-fns/nextSaturday";
+import { nextMonday } from "date-fns/nextMonday";
 
 export type Result<T> =
     | { type: 'ok', readonly value: T }
@@ -207,4 +215,35 @@ export function isComplete(task: Doc<'tasks'>): boolean {
 }
 export function isInProject(project: Id<'projects'>, task: Doc<'tasks'>): boolean {
     return task.project === project;
+}
+
+export function parseLazyDate(now: Date, s: string): Date | undefined {
+    const iso = parseISO(s);
+    if (!isNaN(iso.getTime())) return iso;
+
+    switch (s.toLowerCase()) {
+        case 'today':
+            return startOfDay(now);
+        case 'tom':
+        case 'tomorrow':
+            return startOfDay(addDays(now, 1));
+
+        case 'sun': return startOfDay(nextSunday(now));
+        case 'mon': return startOfDay(nextMonday(now));
+        case 'tue': return startOfDay(nextTuesday(now));
+        case 'wed': return startOfDay(nextWednesday(now));
+        case 'thu': return startOfDay(nextThursday(now));
+        case 'fri': return startOfDay(nextFriday(now));
+        case 'sat': return startOfDay(nextSaturday(now));
+
+        case 'next sun': return startOfDay(nextSunday(nextSunday(now)));
+        case 'next mon': return startOfDay(nextMonday(nextMonday(now)));
+        case 'next tue': return startOfDay(nextTuesday(nextTuesday(now)));
+        case 'next wed': return startOfDay(nextWednesday(nextWednesday(now)));
+        case 'next thu': return startOfDay(nextThursday(nextThursday(now)));
+        case 'next fri': return startOfDay(nextFriday(nextFriday(now)));
+        case 'next sat': return startOfDay(nextSaturday(nextSaturday(now)));
+    }
+
+    return undefined;
 }
