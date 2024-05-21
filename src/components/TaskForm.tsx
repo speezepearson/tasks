@@ -171,6 +171,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                     <OptionalDateField
                         label="Until date"
                         InputLabelProps={{ shrink: true }}
+                        error={blockedUntilMillis.type === 'err'}
                         fullWidth
                         type="date"
                         value={blockedUntilF}
