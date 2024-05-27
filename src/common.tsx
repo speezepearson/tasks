@@ -12,6 +12,7 @@ import { nextThursday } from "date-fns/nextThursday";
 import { nextFriday } from "date-fns/nextFriday";
 import { nextSaturday } from "date-fns/nextSaturday";
 import { nextMonday } from "date-fns/nextMonday";
+import { formatDate } from "date-fns/format";
 
 export type Result<T> =
     | { type: 'ok', readonly value: T }
@@ -215,6 +216,10 @@ export function isComplete(task: Doc<'tasks'>): boolean {
 }
 export function isInProject(project: Id<'projects'>, task: Doc<'tasks'>): boolean {
     return task.project === project;
+}
+
+export function formatISODate(date: Date | number): string {
+    return formatDate(date, 'yyyy-MM-dd');
 }
 
 export function parseLazyDate(now: Date, s: string): Date | undefined {

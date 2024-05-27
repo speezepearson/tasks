@@ -3,8 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Map } from "immutable";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
-import { formatDate } from "date-fns";
+import { formatISODate, must, useLoudRequestStatus, useNow, watchReqStatus } from "../common";
 import { Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import { getOutstandingBlockers } from "../common";
 import { EditTaskForm } from "./TaskForm";
@@ -79,7 +78,7 @@ export function Task({ task, projectsById, tasksById }: {
         {blocked
             && <Box sx={{ ml: 4 }}>
                 {task.blockedUntilMillis !== undefined && task.blockedUntilMillis > now.getTime() && <Stack direction="row" alignItems="center" spacing={1}>
-                    <Typography>Blocked until {formatDate(task.blockedUntilMillis, 'yyyy-MM-dd')}</Typography>
+                    <Typography>Blocked until {formatISODate(task.blockedUntilMillis)}</Typography>
                     <Button
                         variant="outlined" sx={{ py: 0 }}
                         onClick={() => { watchReqStatus(setReq, updateTask({ id: task._id, blockedUntilMillis: { new: undefined } })) }}

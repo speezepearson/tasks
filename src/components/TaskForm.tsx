@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
-import { ReqStatus, must, parseLazyDate, useMapify, useNow, useParsed, watchReqStatus } from "../common";
+import { ReqStatus, Result, formatISODate, must, parseISOMillis, parseLazyDate, useMapify, useNow, useParsed, watchReqStatus } from "../common";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { List, Map, Set } from "immutable";
 import { ProjectAutocomplete } from "./ProjectAutocomplete";
@@ -10,7 +10,6 @@ import { api } from "../../convex/_generated/api";
 import { BlockerAutocomplete } from "./BlockerAutocomplete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { DetailsEditor } from "./DetailsEditor";
-import { OptionalDateField } from "./OptionalDateField";
 
 export interface CreateTaskFormProps {
     forceProject?: Doc<'projects'>;
@@ -43,12 +42,14 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
 
     const [detailsF, setDetailsF] = useState('');
 
-    const [blockedUntilMillis, blockedUntilF, setBlockedUntilF] = useParsed(undefined as number | undefined, useCallback(blockedUntilF => {
-        if (blockedUntilF !== undefined && blockedUntilF < now.getTime()) {
-            return { type: 'err', message: "Blocked until date must be in the future" };
-        }
-        return { type: 'ok', value: blockedUntilF };
-    }, [now]));
+    const [blockedUntilF, setBlockedUntilF] = useState('');
+    const blockedUntilMillis: Result<number | undefined> = useMemo(() => {
+        const res = parseISOMillis(blockedUntilF);
+        if (res === undefined) return { type: 'ok', value: undefined };
+        if (res < now.getTime()) return { type: 'err', message: "Blocked until date must be in the future" };
+        return { type: 'ok', value: res };
+    }, [blockedUntilF, now]);
+
     const blockerOptions = useMemo(
         () => allTasks?.valueSeq().filter(
             t => t.project === project?._id
@@ -64,7 +65,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
             const remainder = textF.slice(0, -1);
             const due = parseLazyDate(now, remainder);
             if (due !== undefined) {
-                setBlockedUntilF(due.getTime());
+                setBlockedUntilF(formatISODate(due.getTime()));
                 setExpandBlockers(true);
                 setTextF('');
             }
@@ -107,7 +108,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 setDetailsF('');
                 // don't reset the project, so that the user can easily create multiple tasks in the same project
                 setTags(List());
-                setBlockedUntilF(undefined);
+                setBlockedUntilF('');
                 setBlockers(List());
                 setTimeout(() => { textRef.current?.focus() }, 0);
             })
@@ -168,14 +169,14 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
             <Accordion expanded={expandBlockers} onChange={() => { setExpandBlockers(!expandBlockers) }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>Blocked?</Typography></AccordionSummary>
                 <AccordionDetails>
-                    <OptionalDateField
+                    <TextField
                         label="Until date"
                         InputLabelProps={{ shrink: true }}
                         error={blockedUntilMillis.type === 'err'}
                         fullWidth
                         type="date"
                         value={blockedUntilF}
-                        onChange={setBlockedUntilF}
+                        onChange={e => { setBlockedUntilF(e.target.value) }}
                         disabled={req.type === 'working'}
                     />
 
@@ -220,7 +221,8 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
 
     const [detailsF, setDetailsF] = useState(init.details);
 
-    const [blockedUntil, setBlockedUntil] = useState(init.blockedUntilMillis);
+    const [blockedUntilF, setBlockedUntilF] = useState(init.blockedUntilMillis ? formatISODate(init.blockedUntilMillis) : '');
+    const blockedUntil = useMemo(() => parseISOMillis(blockedUntilF), [blockedUntilF]);
 
     const blockerOptions = useMemo(
         () => allTasks?.valueSeq().filter(
@@ -326,13 +328,13 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
             <Accordion defaultExpanded={init.blockedUntilMillis !== undefined || init.blockers.length > 0}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>Blocked?</Typography></AccordionSummary>
                 <AccordionDetails>
-                    <OptionalDateField
+                    <TextField
                         label="Until date"
+                        type="date"
                         InputLabelProps={{ shrink: true }}
                         fullWidth
-                        type="date"
-                        value={blockedUntil}
-                        onChange={setBlockedUntil}
+                        value={blockedUntilF}
+                        onChange={(e) => { setBlockedUntilF(e.target.value) }}
                         disabled={req.type === 'working'}
                     />
 
