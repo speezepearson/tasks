@@ -85,6 +85,6 @@ export const getMisc = queryWithUser({
 export const list = queryWithUser({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("projects").withIndex('owner_archivedAtMillis', q => q.eq('owner', ctx.user._id).eq('archivedAtMillis', undefined)).collect();
+    return await ctx.db.query("projects").withIndex('owner_archivedAtMillis', q => q.eq('owner', ctx.user._id)).collect();
   },
 });

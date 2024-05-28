@@ -72,7 +72,7 @@ function AuthenticatedPage() {
         taskBins.forEach((bin, t) => res = res.update(
             must(projectsById.get(t.project), "task references nonexistent project"),
             initialProjectBlock(), pb => ({ ...pb, [bin]: { ...pb[bin], tasks: pb[bin].tasks.push(t) } })));
-        return res;
+        return res.filter((_, k) => k.archivedAtMillis === undefined);
     }, [tasks, outstandingBlockers, projects, projectsById, now]);
 
     const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
