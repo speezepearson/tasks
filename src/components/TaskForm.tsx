@@ -27,6 +27,8 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
 
     const textRef = useRef<HTMLTextAreaElement>(null);
 
+    const autocompleteProjects = useMemo(() => projectsById?.filter(p => p.archivedAtMillis === undefined), [projectsById]);
+
     const [project, setProject] = useState(forceProject ?? recommendedProject ?? inbox);
     const [projectFieldValid, setProjectFieldValid] = useState(true);
     useEffect(() => {
@@ -145,7 +147,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 />
             </Stack>
 
-            {projectsById === undefined || project === undefined
+            {autocompleteProjects === undefined || project === undefined
                 ? <TextField
                     label="Project"
                     fullWidth
@@ -154,7 +156,7 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
                 />
                 : <ProjectAutocomplete
                     value={project}
-                    projectsById={projectsById}
+                    projectsById={autocompleteProjects}
                     onChange={setProject}
                     onValid={setProjectFieldValid}
                     disabled={req.type === 'working'}
@@ -220,6 +222,8 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
     }, []));
 
     const [detailsF, setDetailsF] = useState(init.details);
+
+    const autocompleteProjects = useMemo(() => projectsById.filter(p => p.archivedAtMillis === undefined), [projectsById]);
 
     const [blockedUntilF, setBlockedUntilF] = useState(init.blockedUntilMillis ? formatISODate(init.blockedUntilMillis) : '');
     const blockedUntil = useMemo(() => parseISOMillis(blockedUntilF), [blockedUntilF]);
@@ -313,7 +317,7 @@ export function EditTaskForm({ init, projectsById, onUpdate }: EditTaskFormProps
 
             <ProjectAutocomplete
                 value={project}
-                projectsById={projectsById}
+                projectsById={autocompleteProjects}
                 onChange={setProject}
                 onValid={setProjectFieldValid}
                 disabled={req.type === 'working'}
