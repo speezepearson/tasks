@@ -63,25 +63,31 @@ export function CreateTaskForm({ forceProject, recommendedProject, projectsById,
     const [tags, setTags] = useState(List<string>())
 
     useEffect(() => {
-        if (textF.endsWith('.')) {
-            const remainder = textF.slice(0, -1);
-            const due = parseLazyDate(now, remainder);
+        const tagMatch = (/@([a-zA-Z0-9_-]+) $/g).exec(textF);
+        if (tagMatch !== null) {
+            const tag = tagMatch[1];
+            if (tags.includes(tag)) return;
+            setTags(tags.push(tag));
+            setTextF(textF.slice(0, -tagMatch[0].length) + ' ');
+        }
+
+        const projectMatch = (/#(.+)$/g).exec(textF);
+        if (projectMatch !== null) {
+            const project = projectsById?.valueSeq().find(p => p.archivedAtMillis === undefined && p.name.toLowerCase() === projectMatch[1].toLowerCase());
+            console.log({ projectMatch, project })
+            if (project !== undefined) {
+                setProject(project);
+                setTextF(textF.slice(0, -projectMatch[0].length));
+            }
+        }
+
+        const dueMatch = (/!([^ ].*)$/g).exec(textF);
+        if (dueMatch !== null) {
+            const due = parseLazyDate(now, dueMatch[1]);
             if (due !== undefined) {
                 setBlockedUntilF(formatISODate(due.getTime()));
                 setExpandBlockers(true);
-                setTextF('');
-            }
-        }
-        if (textF.startsWith('@') && textF.endsWith(' ')) {
-            setTags(tags.push(textF.slice(1, -1)));
-            setTextF('');
-        }
-        if (textF.startsWith('#')) {
-            const projectName = textF.slice(1).trim().toLowerCase();
-            const project = projectsById?.valueSeq().find(p => p.name.toLowerCase() === projectName);
-            if (project !== undefined) {
-                setProject(project);
-                setTextF('');
+                setTextF(textF.slice(0, -dueMatch[0].length) + ' ');
             }
         }
     }, [textF, now, setBlockedUntilF, setTextF, projectsById, tags]);
