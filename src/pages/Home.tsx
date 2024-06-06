@@ -75,8 +75,8 @@ function AuthenticatedPage() {
         return res.filter((_, k) => k.archivedAtMillis === undefined);
     }, [tasks, outstandingBlockers, projects, projectsById, now]);
 
-    const nextActionFilterFieldRef = useRef<HTMLInputElement | null>(null);
-    const [nextActionFilterF, setNextActionFilterF] = useState("");
+    const taskFilterFieldRef = useRef<HTMLInputElement | null>(null);
+    const [taskFilterF, setTaskFilterF] = useState("");
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -85,7 +85,7 @@ function AuthenticatedPage() {
                 case 'f':
                     if (e.ctrlKey || e.metaKey) break;
                     e.preventDefault();
-                    nextActionFilterFieldRef.current?.focus();
+                    taskFilterFieldRef.current?.focus();
                     break;
             }
         };
@@ -94,19 +94,22 @@ function AuthenticatedPage() {
     }, []);
 
     return <Stack direction="column">
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <TextField
+                inputRef={taskFilterFieldRef}
+                label="filter"
+                value={taskFilterF}
+                onChange={(e) => { setTaskFilterF(e.target.value) }}
+                onKeyDown={(e) => { if (e.key === 'Escape') { taskFilterFieldRef.current?.blur(); } }}
+                sx={{ maxWidth: '10em' }}
+            />
+        </Box>
+
         <Accordion defaultExpanded sx={{ mt: 4 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h4">Next Actions</Typography>
             </AccordionSummary>
             <AccordionDetails>
-                <TextField
-                    inputRef={nextActionFilterFieldRef}
-                    label="filter"
-                    value={nextActionFilterF}
-                    onChange={(e) => { setNextActionFilterF(e.target.value) }}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { nextActionFilterFieldRef.current?.blur(); } }}
-                    sx={{ maxWidth: '10em' }}
-                />
                 {(projectBlocks === undefined
                     || projectsById === undefined
                     || tasksById === undefined
@@ -118,7 +121,7 @@ function AuthenticatedPage() {
                         .map(([project, block]) => {
                             const projectTasks = block.actionable.tasks.filter(t => textMatches(
                                 [t.text, ...t.tags.map(tag => `@${tag}`)].join(" "),
-                                nextActionFilterF));
+                                taskFilterF));
                             if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
                                 key={project._id}
@@ -145,7 +148,9 @@ function AuthenticatedPage() {
                         .entrySeq()
                         .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
-                            const projectTasks = block.blocked.tasks;
+                            const projectTasks = block.blocked.tasks.filter(t => textMatches(
+                                [t.text, ...t.tags.map(tag => `@${tag}`)].join(" "),
+                                taskFilterF));
                             if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
                                 key={project._id}
@@ -172,7 +177,9 @@ function AuthenticatedPage() {
                         .entrySeq()
                         .sortBy(([p]) => p.name)
                         .map(([project, block]) => {
-                            const projectTasks = block.historic.tasks;
+                            const projectTasks = block.historic.tasks.filter(t => textMatches(
+                                [t.text, ...t.tags.map(tag => `@${tag}`)].join(" "),
+                                taskFilterF));
                             if (projectTasks.isEmpty()) return null;
                             return <ProjectCard
                                 key={project._id}
